@@ -13,6 +13,8 @@ while True:
     c, addr = s.accept()
     print("Connected with ", addr)
 
-    c.send("Welcome to Lahore")
+    name = c.recv(1024)
+
+    c.send(bytes("Welcome to Lahore", "utf-8"))
 
     c.close()
