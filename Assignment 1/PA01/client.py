@@ -26,7 +26,7 @@ class Client:
         self.server_port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(None)
-        self.sock.bind(('', random.randint(10000, 40000)))
+        self.sock.bind(('', random.randint(10000, 40000))) #binding randomly
         self.name = username
         self.window = window_size
 
@@ -36,17 +36,125 @@ class Client:
         Start by sending the server a JOIN message.
         Waits for userinput and then process it
         '''
-        raise NotImplementedError
+        #make packet
+        pack = util.make_packet(msg = util.make_message("join", 1, self.name))
+        
+        #send join message
+        self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+        
+        loop = True
+        
+        while loop:
+            msg = input()
             
-
+            if (msg == "list"):
+                #make packet
+                pack = util.make_packet(msg = util.make_message("request_users_list", 2))
+                
+                #send packet
+                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+            
+            elif (msg[:3] == "msg"):
+                #make packet
+                pack = util.make_packet(msg = util.make_message("send_message", 4, msg))
+                
+                #deliver packet
+                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                
+            elif (msg[:4] == "file"):
+                #get file info
+                userInput = util.breakMessage(msg)
+                fileName = userInput[-1]
+                
+                #handle file
+                file = open(fileName, 'r')
+                msg = file.read() #contains file
+                finalMsg = ' '.join(userInput[1:]) + " " + msg 
+               
+                #send file to server
+                #make packet
+                pack = util.make_packet(msg = util.make_message("send_file", 4, finalMsg))
+                
+                #deliver packet
+                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                
+            elif (msg == "quit"):
+                print("quitting")
+                loop = False
+                
+                #make packet
+                pack = util.make_packet(msg = util.make_message("disconnect", 1, self.name))
+                
+                #deliver packet
+                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                
+            elif (msg == "help"):
+                print("Help:")
+                print("Message: msg <number_of_users> <username1> <username2> … <message>")
+                print("Available Users: list")
+                print("File Sharing: file <number_of_users> <username1> <username2> … <file_name>")
+                print("Quit: quit")
+                
+            else:
+                #if client receives unknown message
+                uknown = "unknown" + " " + self.name
+                
+                #make packet
+                pack = util.make_packet(msg = uknown)
+                
+                #deliver packet
+                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                
     def receive_handler(self):
         '''
         Waits for a message from server and process it accordingly
         '''
-        raise NotImplementedError
+        while True:
+            #receiving messages from clients
+            message, address = self.sock.recvfrom(4096)
+            
+            #decode packet
+            msg = message.decode("utf-8")
+            
+            #parse packet
+            msg = util.parse_packet(msg)
+            msg = str(msg[2])
+            
+            #break message
+            msg = util.breakMessage(msg)
+        
+            if (msg[0] == "ERR_SERVER_FULL"):
+                #disconnect from server
+                print("disconnected: server full")
+                loop = False
+                 
+            elif (msg[0] == "ERR_USERNAME_UNAVAILABLE"):
+                #disconnect from server
+                print("disconnected: username not available")
+                loop = False
 
-
-
+            elif (msg[0] == "ERR_UNKNOWN_MESSAGE"):
+                #disconnect from server
+                print("disconnected: server received an unknown command")
+                loop = False
+            
+            elif (msg[0] == "response_users_list"):
+                print("list:", ' '.join(sorted(msg[2:])))
+            
+            elif (msg[0] == "forward_message"):
+                print("msg:", ''.join(msg[2] + ":"), ' '.join(msg[3:]))
+            
+            elif (msg[0] == "forward_file"):
+                fileName = self.name + "_" + str(msg[3]) #client_name + file_name
+                file = open(fileName, "w")
+                
+                #display file received message
+                print("file:", ''.join(str(msg[2] + ":")), fileName)
+                
+                #write to new file
+                file.write(' '.join(msg[4:]))
+                file.close()
+                
 # Do not change this part of code
 if __name__ == "__main__":
     def helper():

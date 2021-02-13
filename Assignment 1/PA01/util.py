@@ -67,3 +67,22 @@ def make_message(msg_type, msg_format, message=None):
         msg_len = len(message)
         return "%s %d %s" % (msg_type, msg_len, message)
     return ""
+
+
+def breakMessage(msg):
+    '''
+    This function splits the message string into
+    a tuple (msg_type, msg_len, message) 
+    '''
+    return msg.split()
+
+
+def getUname(dict, addr):
+    '''
+    gets username from client list using address
+    '''
+    for k, v in dict.items():
+        if (v == addr):
+            return k
+    
+    return "DNE"
