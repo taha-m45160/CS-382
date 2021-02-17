@@ -1,5 +1,5 @@
 '''
-This module defines the behaviour of a client in your Chat Application
+This module defines the behavior of a client in your Chat Application
 '''
 import sys
 import getopt
@@ -8,7 +8,6 @@ import random
 from threading import Thread
 import os
 import util
-
 
 '''
 Write your code inside this class. 
@@ -81,12 +80,14 @@ class Client:
             elif (msg == "quit"):
                 print("quitting")
                 loop = False
-                
+      
                 #make packet
                 pack = util.make_packet(msg = util.make_message("disconnect", 1, self.name))
                 
                 #deliver packet
                 self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                
+                self.sock.close()
                 
             elif (msg == "help"):
                 print("Help:")
@@ -96,20 +97,16 @@ class Client:
                 print("Quit: quit")
                 
             else:
-                #if client receives unknown message
-                uknown = "unknown" + " " + self.name
-                
-                #make packet
-                pack = util.make_packet(msg = uknown)
-                
-                #deliver packet
-                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                print("incorrect userinput")
                 
     def receive_handler(self):
         '''
         Waits for a message from server and process it accordingly
         '''
-        while True:
+        
+        loop = True
+        
+        while loop:
             #receiving messages from clients
             message, address = self.sock.recvfrom(4096)
             
@@ -127,17 +124,20 @@ class Client:
                 #disconnect from server
                 print("disconnected: server full")
                 loop = False
+                self.sock.close()
                  
             elif (msg[0] == "ERR_USERNAME_UNAVAILABLE"):
                 #disconnect from server
                 print("disconnected: username not available")
                 loop = False
-
+                self.sock.close()
+                
             elif (msg[0] == "ERR_UNKNOWN_MESSAGE"):
                 #disconnect from server
                 print("disconnected: server received an unknown command")
                 loop = False
-            
+                self.sock.close()
+                
             elif (msg[0] == "response_users_list"):
                 print("list:", ' '.join(sorted(msg[2:])))
             
@@ -149,7 +149,7 @@ class Client:
                 file = open(fileName, "w")
                 
                 #display file received message
-                print("file:", ''.join(str(msg[2] + ":")), fileName)
+                print("file:", ''.join(str(msg[2] + ":")), str(msg[3]))
                 
                 #write to new file
                 file.write(' '.join(msg[4:]))

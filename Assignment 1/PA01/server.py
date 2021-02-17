@@ -1,11 +1,10 @@
 '''
-This module defines the behaviour of server in your Chat Application
+This module defines the behavior of server in your Chat Application
 '''
 import sys
 import getopt
 import socket
 import util
-
 
 class Server:
     '''
@@ -55,7 +54,8 @@ class Server:
                     
                     #disconnect client
                     print("disconnected: server full")
-                    loop = False
+                    #loop = False
+                    
                 
                 #check if a client with the same username already exists
                 elif (str(msg[2]) in self.clients):
@@ -68,7 +68,8 @@ class Server:
                     
                     #disconnect client
                     print("disconnected: username not available")
-                    loop = False
+                    #loop = False
+                    
                     
                 #else client joins server successfully
                 else:
@@ -82,9 +83,23 @@ class Server:
                 #deliver packet
                 self.sock.sendto(pack.encode("utf-8"), address)
     
-                print("request_users_list ", util.getUname(self.clients, address))
+                print("request_users_list:", util.getUname(self.clients, address))
             
             elif (msg[0] == "send_message"):
+                print(msg)
+                #check for invalid inputs
+                if (msg[3].isdigit() != True):
+                    print("disconnected:", util.getUname(self.clients, address),"sent unknown command")
+                    
+                    #make packet
+                    pack = util.make_packet(msg = util.make_message("ERR_UNKNOWN_MESSAGE", 2))
+                        
+                    #deliver packet
+                    self.sock.sendto(pack.encode("utf-8"), address)
+                    
+                    continue
+                
+                
                 print("msg:", util.getUname(self.clients, address)) #print message
                 
                 userCount = int(msg[3]) #no of recipients
@@ -111,6 +126,18 @@ class Server:
                         print("msg:", util.getUname(self.clients, address), "to non-existent user", i)
             
             elif (msg[0] == "send_file"):
+                #check for invalid input
+                if (msg[2].isdigit() != True):
+                    print("disconnected:", util.getUname(self.clients, address),"sent unknown command")
+                    
+                    #make packet
+                    pack = util.make_packet(msg = util.make_message("ERR_UNKNOWN_MESSAGE", 2))
+                        
+                    #deliver packet
+                    self.sock.sendto(pack.encode("utf-8"), address)
+                    
+                    continue
+                    
                 print("file:", util.getUname(self.clients, address)) #print message
                 
                 userCount = int(msg[2]) #no of recipients
@@ -139,17 +166,6 @@ class Server:
             elif (msg[0] == "disconnect"):
                 del self.clients[msg[2]]
                 print("disconnected:", msg[2])
-                
-            else:
-                #make packet
-                pack = util.make_packet(msg = util.make_message("ERR_UNKNOWN_MESSAGE", 2))
-                
-                #deliver packet 
-                self.sock.sendto(pack.encode("utf-8"), address)
-                
-                #disconnect client
-                print("disconnected: ", str(msg[1]), " sent unknown command")
-                loop = False
                 
 # Do not change this part of code
 if __name__ == "__main__":
