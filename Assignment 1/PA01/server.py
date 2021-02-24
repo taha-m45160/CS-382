@@ -203,5 +203,3 @@ if __name__ == "__main__":
         SERVER.start()
     except (KeyboardInterrupt, SystemExit):
         exit()
-
-# begin part 2.1
