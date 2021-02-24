@@ -1,4 +1,5 @@
 '''
+Part 2.1
 This module defines the behavior of a client in your Chat Application
 '''
 import sys
