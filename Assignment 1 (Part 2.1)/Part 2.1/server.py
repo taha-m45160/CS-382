@@ -5,6 +5,8 @@ import sys
 import getopt
 import socket
 import util
+import threading
+import queue
 
 class Server:
     '''
@@ -13,21 +15,48 @@ class Server:
     def __init__(self, dest, port, window):
         self.server_addr = dest
         self.server_port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #ipv4 and UDP
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(None)
         self.sock.bind((self.server_addr, self.server_port))
         self.window = window
 
         #store client data (username and address)
         self.clients = {}
-        
+
+        #store client thread info
+        self.clientThreads = {}
+
+    def handleClient(self):
+        pass
+
+    def connectionHandler(self):
+        """
+        establishes and maintains 
+        connection to client threads
+        """
+
+        loop = True
+
+        while loop:
+            # listen through socket for client connections
+            message, address = self.sock.recvfrom(4096)
+
+            #decode and parse
+            pack = message.decode("utf-8")
+            parsedPack = util.parse_packet(pack)
+
+            # create client threads
+            if parsedPack[2][0] == "join":
+                clientThreads[address] = threading.Thread(target = handleClient, args())
+                clientThreads[address].start()
+
+
+
     def start(self):
         '''
         Main loop.
         continue receiving messages from Clients and processing it
         '''
-        
         loop = True
         
         while loop:
@@ -166,7 +195,8 @@ class Server:
             elif (msg[0] == "disconnect"):
                 del self.clients[msg[2]]
                 print("disconnected:", msg[2])
-                
+
+
 # Do not change this part of code
 if __name__ == "__main__":
     def helper():

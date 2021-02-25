@@ -6,7 +6,7 @@ import binascii
 MAX_NUM_CLIENTS = 10
 TIME_OUT = 0.5 # 500ms
 NUM_OF_RETRANSMISSIONS = 3
-CHUNK_SIZE = 1400 # 1400 Bytes
+CHUNK_SIZE = 2 # 1400 Bytes
 
 def validate_checksum(message):
     '''
@@ -86,3 +86,21 @@ def getUname(dict, addr):
             return k
     
     return "DNE"
+
+def msgChunker(msg):
+    '''
+    converts message into chunks of 
+    size CHUNK_SIZE, stores each chunk 
+    on each index of a list that is 
+    eventually returned
+    '''
+    msgSize = len(msg)
+
+    chunkNo = round(msgSize / CHUNK_SIZE)
+
+    chunkyMsg = []  #store a chunk at each index
+
+    for i in range(chunkNo):
+        chunkyMsg.append(msg[i * CHUNK_SIZE : (i * CHUNK_SIZE) + CHUNK_SIZE])
+    
+    return chunkyMsg

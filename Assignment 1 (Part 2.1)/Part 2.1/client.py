@@ -26,22 +26,16 @@ class Client:
         self.server_port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(None)
-        self.sock.bind(('', random.randint(10000, 40000))) #binding randomly
+        self.sock.bind(('', random.randint(10000, 40000)))
         self.name = username
         self.window = window_size
 
     def start(self):
-        '''
+        """
         Main Loop is here
         Start by sending the server a JOIN message.
-        Waits for userinput and then process it
-        '''
-        #make packet
-        pack = util.make_packet(msg = util.make_message("join", 1, self.name))
-        
-        #send join message
-        self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
-        
+        Waits for userinput and then processes it
+        """
         loop = True
         
         while loop:
@@ -99,7 +93,32 @@ class Client:
                 
             else:
                 print("incorrect userinput")
-                
+
+    def dispatchMsg(self, madeMsg):
+        """
+        takes a message and dispatches it
+        to the server
+        """
+        # divide main message into chunks and make packets
+        chunkedMessage = util.msgChunker(util.make_message("join", 1, self.name))
+
+        # list to store packets in an ordered sequence
+        packetSeq = []
+
+        # generate sequence no for session
+        seqNo = random.randint(0, sys.maxsize)
+
+        # append start packet
+        packetSeq.insert(0, util.make_packet("start", seqNo, ))
+
+        # append data packets
+        for i in range(len(chunkedMessage)):
+            # make and store packets
+            packetSeq.append(util.make_packet("data", seqNo + (2 * i + 2), str(chunkedMessage[i])))
+
+        # append end packet to list
+        packetSeq.append(util.make_packet("end", 2 * len(chunkedMessage), ))
+
     def receive_handler(self):
         '''
         Waits for a message from server and process it accordingly
