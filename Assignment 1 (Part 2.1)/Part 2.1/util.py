@@ -2,6 +2,8 @@
 This file contains basic utility functions that you can use.
 '''
 import binascii
+import random
+import sys
 
 MAX_NUM_CLIENTS = 10
 TIME_OUT = 0.5 # 500ms
@@ -87,6 +89,7 @@ def getUname(dict, addr):
     
     return "DNE"
 
+
 def msgChunker(msg):
     '''
     converts message into chunks of 
@@ -103,4 +106,32 @@ def msgChunker(msg):
     for i in range(chunkNo):
         chunkyMsg.append(msg[i * CHUNK_SIZE : (i * CHUNK_SIZE) + CHUNK_SIZE])
     
-    return chunkyMsg
+    return chunkyMsg    
+
+
+def packetSeqCreator(self, madeMsg):
+        """
+        takes a message, creates and
+        and returns a packet sequence
+        """
+        # divide main message into chunks and make packets
+        chunkedMessage = msgChunker(madeMsg)
+
+        # list to store packets in an ordered sequence
+        packetSeq = []
+
+        # generate sequence no for session
+        seqNo = random.randint(0, sys.maxsize)
+
+        # append start packet
+        packetSeq.insert(0, make_packet("start", seqNo, ))
+
+        # append data packets
+        for i in range(len(chunkedMessage)):
+            # make and store packets
+            packetSeq.append(make_packet("data", seqNo + (2 * i + 2), str(chunkedMessage[i])))
+
+        # append end packet to list
+        packetSeq.append(make_packet("end", 2 * (len(chunkedMessage) + 1) + seqNo, ))
+
+        return packetSeq

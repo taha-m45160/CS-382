@@ -9,6 +9,7 @@ import random
 from threading import Thread
 import os
 import util
+import queue
 
 '''
 Write your code inside this class. 
@@ -21,6 +22,7 @@ class Client:
     '''
     This is the main Client Class. 
     '''
+
     def __init__(self, username, dest, port, window_size):
         self.server_addr = dest
         self.server_port = port
@@ -30,151 +32,146 @@ class Client:
         self.name = username
         self.window = window_size
 
+        self.ackQ = queue.Queue()
+
     def start(self):
         """
         Main Loop is here
         Start by sending the server a JOIN message.
         Waits for userinput and then processes it
         """
+        # begin by sending a join message
+        join = util.packetSeqCreator(self, util.make_message("join", 1, self.name))
+
+        for i in range(len(join)):
+            self.sock.sendto(join[i].encode("utf-8"), (self.server_addr, self.server_port))
+
+            ack = self.ackQ.get(block=True)
+            if (ack[0] == "ack"):
+                #print("ack recvd", ack[1])
+                continue
+
         loop = True
-        
+
         while loop:
             msg = input()
-            
+
             if (msg == "list"):
-                #make packet
-                pack = util.make_packet(msg = util.make_message("request_users_list", 2))
-                
-                #send packet
+                # make packet
+                pack = util.make_packet(msg=util.make_message("request_users_list", 2))
+
+                # send packet
                 self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
-            
+
             elif (msg[:3] == "msg"):
-                #make packet
-                pack = util.make_packet(msg = util.make_message("send_message", 4, msg))
-                
-                #deliver packet
+                # make packet
+                pack = util.make_packet(msg=util.make_message("send_message", 4, msg))
+
+                # deliver packet
                 self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
-                
+
             elif (msg[:4] == "file"):
-                #get file info
+                # get file info
                 userInput = util.breakMessage(msg)
                 fileName = userInput[-1]
-                
-                #handle file
+
+                # handle file
                 file = open(fileName, 'r')
-                msg = file.read() #contains file
-                finalMsg = ' '.join(userInput[1:]) + " " + msg 
-               
-                #send file to server
-                #make packet
-                pack = util.make_packet(msg = util.make_message("send_file", 4, finalMsg))
-                
-                #deliver packet
+                msg = file.read()  # contains file
+                finalMsg = ' '.join(userInput[1:]) + " " + msg
+
+                # send file to server
+                # make packet
+                pack = util.make_packet(msg=util.make_message("send_file", 4, finalMsg))
+
+                # deliver packet
                 self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
-                
+
             elif (msg == "quit"):
                 print("quitting")
                 loop = False
-      
-                #make packet
-                pack = util.make_packet(msg = util.make_message("disconnect", 1, self.name))
-                
-                #deliver packet
+
+                # make packet
+                pack = util.make_packet(msg=util.make_message("disconnect", 1, self.name))
+
+                # deliver packet
                 self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
-                
+
                 self.sock.close()
-                
+
             elif (msg == "help"):
                 print("Help:")
                 print("Message: msg <number_of_users> <username1> <username2> … <message>")
                 print("Available Users: list")
                 print("File Sharing: file <number_of_users> <username1> <username2> … <file_name>")
                 print("Quit: quit")
-                
+
             else:
                 print("incorrect userinput")
-
-    def dispatchMsg(self, madeMsg):
-        """
-        takes a message and dispatches it
-        to the server
-        """
-        # divide main message into chunks and make packets
-        chunkedMessage = util.msgChunker(util.make_message("join", 1, self.name))
-
-        # list to store packets in an ordered sequence
-        packetSeq = []
-
-        # generate sequence no for session
-        seqNo = random.randint(0, sys.maxsize)
-
-        # append start packet
-        packetSeq.insert(0, util.make_packet("start", seqNo, ))
-
-        # append data packets
-        for i in range(len(chunkedMessage)):
-            # make and store packets
-            packetSeq.append(util.make_packet("data", seqNo + (2 * i + 2), str(chunkedMessage[i])))
-
-        # append end packet to list
-        packetSeq.append(util.make_packet("end", 2 * len(chunkedMessage), ))
 
     def receive_handler(self):
         '''
         Waits for a message from server and process it accordingly
         '''
-        
+
         loop = True
-        
+
         while loop:
-            #receiving messages from clients
+            # receiving messages from clients
             message, address = self.sock.recvfrom(4096)
-            
-            #decode packet
+
+            # decode packet
             msg = message.decode("utf-8")
-            
-            #parse packet
+
+            # parse packet
             msg = util.parse_packet(msg)
+
+            #check for ack
+            if msg[0] == "ack":
+                self.ackQ.put(msg)
+                continue
+
+            #separate data
             msg = str(msg[2])
-            
-            #break message
+
+            # break message
             msg = util.breakMessage(msg)
-        
+
             if (msg[0] == "ERR_SERVER_FULL"):
-                #disconnect from server
+                # disconnect from server
                 print("disconnected: server full")
                 loop = False
                 self.sock.close()
-                 
+
             elif (msg[0] == "ERR_USERNAME_UNAVAILABLE"):
-                #disconnect from server
+                # disconnect from server
                 print("disconnected: username not available")
                 loop = False
                 self.sock.close()
-                
+
             elif (msg[0] == "ERR_UNKNOWN_MESSAGE"):
-                #disconnect from server
+                # disconnect from server
                 print("disconnected: server received an unknown command")
                 loop = False
                 self.sock.close()
-                
+
             elif (msg[0] == "response_users_list"):
                 print("list:", ' '.join(sorted(msg[2:])))
-            
+
             elif (msg[0] == "forward_message"):
                 print("msg:", ''.join(msg[2] + ":"), ' '.join(msg[3:]))
-            
+
             elif (msg[0] == "forward_file"):
-                fileName = self.name + "_" + str(msg[3]) #client_name + file_name
+                fileName = self.name + "_" + str(msg[3])  # client_name + file_name
                 file = open(fileName, "w")
-                
-                #display file received message
+
+                # display file received message
                 print("file:", ''.join(str(msg[2] + ":")), str(msg[3]))
-                
-                #write to new file
+
+                # write to new file
                 file.write(' '.join(msg[4:]))
                 file.close()
-                
+
 # Do not change this part of code
 if __name__ == "__main__":
     def helper():
@@ -187,9 +184,11 @@ if __name__ == "__main__":
         print("-a ADDRESS | --address=ADDRESS The server ip or hostname, defaults to localhost")
         print("-w WINDOW_SIZE | --window=WINDOW_SIZE The window_size, defaults to 3")
         print("-h | --help Print this help")
+
+
     try:
         OPTS, ARGS = getopt.getopt(sys.argv[1:],
-                                   "u:p:a:w", ["user=", "port=", "address=","window="])
+                                   "u:p:a:w", ["user=", "port=", "address=", "window="])
     except getopt.error:
         helper()
         exit(1)
