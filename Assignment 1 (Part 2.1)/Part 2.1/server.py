@@ -35,23 +35,26 @@ class Server:
 
             check = self.clientQueues.get(modAddr).get()
 
+            print(check)
+
             if check[0] == "start":
                 packetSeq.append(check)
 
                 while True:
                     # get packets
                     packetSeq.append(self.clientQueues.get(modAddr).get())
-
+                    
                     if packetSeq[-1][0] == "end":
                         break    
-
+            
+            else:
+                continue
+    
             msg = util.chunkRestorer(packetSeq)
             
             #break message
             msg = util.breakMessage(msg)
-
-            print(msg)
-
+            
             if (msg[0] == "join"):
                 #check if server full
                 if (len(self.clients) == util.MAX_NUM_CLIENTS):
@@ -118,8 +121,6 @@ class Server:
                 userCount = int(msg[3]) #no of recipients
 
                 recipients = msg[4 : 4 + userCount] #store recipients in list
-
-                print(recipients)
                 
                 #remove duplicates
                 rec = []
@@ -137,7 +138,7 @@ class Server:
                         
                         # create a packet sequence for the message
                         list = util.packetSeqCreator(self, snd)
-
+                        print(list)
                         # dispatch packet sequence
                         util.dispatchServerPackets(self, list, self.clients[i])
                         
@@ -232,7 +233,6 @@ class Server:
 
             else:
                 pack.put(parsedPack)
-
 
 
     def start(self):

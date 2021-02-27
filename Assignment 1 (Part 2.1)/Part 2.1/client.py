@@ -141,6 +141,7 @@ class Client:
 
             else:
                 packetSeq.append(parPack)
+
                 self.sock.sendto(util.make_packet("ack", int(parPack[1]) + 1).encode("utf-8"), address)
 
                 if packetSeq[-1][0] != "end":
@@ -152,8 +153,6 @@ class Client:
 
             # break message
             msg = util.breakMessage(msg)
-
-            print(msg)
 
             if (msg[0] == "ERR_SERVER_FULL"):
                 # disconnect from server
