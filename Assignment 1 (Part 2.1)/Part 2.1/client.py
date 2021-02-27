@@ -47,7 +47,7 @@ class Client:
         join = util.packetSeqCreator(self, joinMsg)
 
         # dispatch packet sequence
-        util.dispatchPackets(self, join, (self.server_addr, self.server_port))
+        util.dispatchClientPackets(self, join, (self.server_addr, self.server_port))
 
         loop = True
 
@@ -60,16 +60,20 @@ class Client:
 
                 # create a packet sequence for the message
                 list = util.packetSeqCreator(self, listMsg)
-                print(list)
+
                 # dispatch packet sequence
-                util.dispatchPackets(self, list, (self.server_addr, self.server_port))
+                util.dispatchClientPackets(self, list, (self.server_addr, self.server_port))
 
             elif (msg[:3] == "msg"):
-                # make packet
-                pack = util.make_packet(msg=util.make_message("send_message", 4, msg))
+                # make list message
+                listMsg = util.make_message("send_message", 4, msg)
 
-                # deliver packet
-                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                # create a packet sequence for the message
+                list = util.packetSeqCreator(self, listMsg)
+
+                # dispatch packet sequence
+                util.dispatchClientPackets(self, list, (self.server_addr, self.server_port))
+
 
             elif (msg[:4] == "file"):
                 # get file info
@@ -82,11 +86,15 @@ class Client:
                 finalMsg = ' '.join(userInput[1:]) + " " + msg
 
                 # send file to server
-                # make packet
-                pack = util.make_packet(msg=util.make_message("send_file", 4, finalMsg))
+                # make message
+                listMsg = util.make_message("send_file", 4, finalMsg)
 
-                # deliver packet
-                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                # create a packet sequence for the message
+                list = util.packetSeqCreator(self, listMsg)
+
+                # dispatch packet sequence
+                util.dispatchClientPackets(self, list, (self.server_addr, self.server_port))
+
 
             elif (msg == "quit"):
                 print("quitting")
@@ -116,6 +124,7 @@ class Client:
         '''
 
         loop = True
+        packetSeq = []
 
         while loop:
             # listen through socket for server messages
@@ -123,23 +132,28 @@ class Client:
 
             # decode and parse
             pack = message.decode("utf-8")
-            msg = util.parse_packet(pack)
+            parPack = util.parse_packet(pack)
 
-            # send ack
-            #self.sock.sendto(util.make_packet("ack", int(msg[1]) + 1).encode("utf-8"), address)
-            # print(int(parsedPack[1]) + 1)
-
-            #check for ack
-            if msg[0] == "ack":
-                print(msg)
-                self.ackQ.put(msg)
+            # check for ack
+            if parPack[0] == "ack":
+                self.ackQ.put(parPack)
                 continue
 
-            #separate data
-            msg = str(msg[2])
+            else:
+                packetSeq.append(parPack)
+                self.sock.sendto(util.make_packet("ack", int(parPack[1]) + 1).encode("utf-8"), address)
+
+                if packetSeq[-1][0] != "end":
+                    continue
+
+            #print(packetSeq)
+
+            msg = util.chunkRestorer(packetSeq)
 
             # break message
             msg = util.breakMessage(msg)
+
+            print(msg)
 
             if (msg[0] == "ERR_SERVER_FULL"):
                 # disconnect from server
@@ -175,6 +189,8 @@ class Client:
                 # write to new file
                 file.write(' '.join(msg[4:]))
                 file.close()
+
+            packetSeq = []
 
 # Do not change this part of code
 if __name__ == "__main__":

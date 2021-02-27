@@ -30,7 +30,6 @@ class Server:
     def handleClient(self, addr):
         modAddr = ','.join(map(str, addr)) # converts address to string
 
-
         while True:
             packetSeq = []
 
@@ -46,12 +45,13 @@ class Server:
                     if packetSeq[-1][0] == "end":
                         break    
 
-                    
             msg = util.chunkRestorer(packetSeq)
             
             #break message
             msg = util.breakMessage(msg)
-            
+
+            print(msg)
+
             if (msg[0] == "join"):
                 #check if server full
                 if (len(self.clients) == util.MAX_NUM_CLIENTS):
@@ -85,67 +85,78 @@ class Server:
                     print("join:", msg[2])
                     
             elif (msg[0] == "request_users_list"):
-                # make join message
+                # make message
                 respList = util.make_message("response_users_list", 3, ' '.join(self.clients.keys()))
 
                 # create a packet sequence for the message
                 list = util.packetSeqCreator(self, respList)
 
                 # dispatch packet sequence
-                util.dispatchPackets(self, list, addr)
+                util.dispatchServerPackets(self, list, addr)
     
                 print("request_users_list:", util.getUname(self.clients, addr))
             
             elif (msg[0] == "send_message"):
-                print(msg)
                 #check for invalid inputs
                 if (msg[3].isdigit() != True):
-                    print("disconnected:", util.getUname(self.clients, address),"sent unknown command")
+                    print("disconnected:", util.getUname(self.clients, addr),"sent unknown command")
                     
-                    #make packet
-                    pack = util.make_packet(msg = util.make_message("ERR_UNKNOWN_MESSAGE", 2))
+                    # make message
+                    snd = util.make_message("ERR_UNKNOWN_MESSAGE", 2)
                         
-                    #deliver packet
-                    self.sock.sendto(pack.encode("utf-8"), address)
+                    # create a packet sequence for the message
+                    list = util.packetSeqCreator(self, snd)
+
+                    # dispatch packet sequence
+                    util.dispatchServerPackets(self, list, addr)
                     
                     continue
                 
                 
-                print("msg:", util.getUname(self.clients, address)) #print message
+                print("msg:", util.getUname(self.clients, addr)) #print message
                 
                 userCount = int(msg[3]) #no of recipients
 
                 recipients = msg[4 : 4 + userCount] #store recipients in list
+
+                print(recipients)
                 
-                #remove duplicates by converting to set and back
-                recipients = set(recipients)
-                recipients = list(recipients)
+                #remove duplicates
+                rec = []
+                [rec.append(x) for x in recipients if x not in rec]
                 
                 paighaam = msg[4 + userCount :] #store msg to be delivered
-                paighaam.insert(0, util.getUname(self.clients, address)) #add sender uname
+                paighaam.insert(0, util.getUname(self.clients, addr)) #add sender uname
                 paighaam = " ".join(paighaam)
                 
                 #deliver messages
                 for i in recipients:
                     if (i in self.clients):
-                        #make packet
-                        pack = util.make_packet(msg = util.make_message("forward_message", 4, paighaam))
+                        # make message
+                        snd = util.make_message("forward_message", 4, paighaam)
                         
-                        #deliver packet
-                        self.sock.sendto(pack.encode("utf-8"), self.clients[i])
+                        # create a packet sequence for the message
+                        list = util.packetSeqCreator(self, snd)
+
+                        # dispatch packet sequence
+                        util.dispatchServerPackets(self, list, self.clients[i])
+                        
                     else:
-                        print("msg:", util.getUname(self.clients, address), "to non-existent user", i)
+                        print("msg:", util.getUname(self.clients, addr), "to non-existent user", i)
             
             elif (msg[0] == "send_file"):
                 #check for invalid input
                 if (msg[2].isdigit() != True):
-                    print("disconnected:", util.getUname(self.clients, address),"sent unknown command")
+                    print("disconnected:", util.getUname(self.clients, addr),"sent unknown command")
                     
-                    #make packet
-                    pack = util.make_packet(msg = util.make_message("ERR_UNKNOWN_MESSAGE", 2))
+                    # make message
+                    snd = util.make_message("ERR_UNKNOWN_MESSAGE", 2)
                         
-                    #deliver packet
-                    self.sock.sendto(pack.encode("utf-8"), address)
+                    # create a packet sequence for the message
+                    list = util.packetSeqCreator(self, snd)
+
+                    # dispatch packet sequence
+                    util.dispatchServerPackets(self, list, addr)
                     
                     continue
                     
@@ -155,30 +166,33 @@ class Server:
 
                 recipients = msg[3 : 3 + userCount] #store recipients in list
                 
-                #remove duplicates by converting to set and back
-                recipients = set(recipients)
-                recipients = list(recipients)
+                #remove duplicates
+                rec = []
+                [rec.append(x) for x in recipients if x not in rec]
                 
                 paighaam = msg[3 + userCount :] #store file to be delivered
-                paighaam.insert(0, util.getUname(self.clients, address)) #add sender uname
+                paighaam.insert(0, util.getUname(self.clients, addr)) #add sender uname
                 paighaam = " ".join(paighaam)
                 
                 #deliver files
                 for i in recipients:
                     if (i in self.clients):
-                        #make packet
-                        pack = util.make_packet(msg = util.make_message("forward_file", 4, paighaam))
+                        # make message
+                        snd = util.util.make_message("forward_file", 4, paighaam)
                         
-                        #deliver
-                        self.sock.sendto(pack.encode("utf-8"), self.clients[i])
+                        # create a packet sequence for the message
+                        list = util.packetSeqCreator(self, snd)
+
+                        # dispatch packet sequence
+                        util.dispatchServerPackets(self, list, self.clients[i])
+
                     else:
-                        print("msg:", util.getUname(self.clients, address), "to non-existent user", i)
+                        print("msg:", util.getUname(self.clients, addr), "to non-existent user", i)
               
             elif (msg[0] == "disconnect"):
                 del self.clients[msg[2]]
                 print("disconnected:", msg[2])
             
-
 
     def connectionHandler(self):
         """
@@ -195,9 +209,10 @@ class Server:
             pack = message.decode("utf-8")
             parsedPack = util.parse_packet(pack)
 
-            # send ack
-            self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
-            #print(int(parsedPack[1]) + 1)
+            if parsedPack[0] != "ack":
+                # send ack
+                self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
+            
 
             modAddr = ','.join(map(str, address)) # converts address to string
 

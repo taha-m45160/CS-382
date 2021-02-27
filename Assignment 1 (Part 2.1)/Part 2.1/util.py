@@ -152,18 +152,38 @@ def packetSeqCreator(self, madeMsg):
         return packetSeq
 
 
-def dispatchPackets(self, packetSeq, addr):
+def dispatchClientPackets(self, packetSeq, addr):
     """
     takes a packet sequence in arg
     created by packetSeqCreator function
     and dispatches these packets systematically
-    to given address
+    to the SERVER
     """
 
     for i in range(len(packetSeq)):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
         ack = self.ackQ.get(block=True)
+
+        if (ack[0] == "ack"):
+            # print("ack recvd", ack[1])
+            continue
+
+
+def dispatchServerPackets(self, packetSeq, addr):
+    """
+    takes a packet sequence in arg
+    created by packetSeqCreator function
+    and dispatches these packets systematically
+    to the CLIENT
+    """
+    modAddr = ','.join(map(str, addr))  # converts address to string
+
+    for i in range(len(packetSeq)):
+        self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+
+        ack = self.clientQueues.get(modAddr).get(block=True)
+
         if (ack[0] == "ack"):
             # print("ack recvd", ack[1])
             continue
