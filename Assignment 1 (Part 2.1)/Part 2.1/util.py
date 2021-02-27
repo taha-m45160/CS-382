@@ -109,11 +109,26 @@ def msgChunker(msg):
     return chunkyMsg    
 
 
+def chunkRestorer(chunklist):
+    """
+    concatenates main message chunks
+    in the data section of each packet
+    from all packets for a given message
+    """
+
+    temp = ""
+    for i in range(len(chunklist)):
+        temp += chunklist[i][2]
+
+    return temp
+
+
 def packetSeqCreator(self, madeMsg):
         """
         takes a message, creates and
         and returns a packet sequence
         """
+
         # divide main message into chunks and make packets
         chunkedMessage = msgChunker(madeMsg)
 
@@ -135,3 +150,20 @@ def packetSeqCreator(self, madeMsg):
         packetSeq.append(make_packet("end", 2 * (len(chunkedMessage) + 1) + seqNo, ))
 
         return packetSeq
+
+
+def dispatchPackets(self, packetSeq, addr):
+    """
+    takes a packet sequence in arg
+    created by packetSeqCreator function
+    and dispatches these packets systematically
+    to given address
+    """
+
+    for i in range(len(packetSeq)):
+        self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+
+        ack = self.ackQ.get(block=True)
+        if (ack[0] == "ack"):
+            # print("ack recvd", ack[1])
+            continue

@@ -40,16 +40,14 @@ class Client:
         Start by sending the server a JOIN message.
         Waits for userinput and then processes it
         """
-        # begin by sending a join message
-        join = util.packetSeqCreator(self, util.make_message("join", 1, self.name))
+        # make join message
+        joinMsg = util.make_message("join", 1, self.name)
 
-        for i in range(len(join)):
-            self.sock.sendto(join[i].encode("utf-8"), (self.server_addr, self.server_port))
+        # create a packet sequence for the message
+        join = util.packetSeqCreator(self, joinMsg)
 
-            ack = self.ackQ.get(block=True)
-            if (ack[0] == "ack"):
-                #print("ack recvd", ack[1])
-                continue
+        # dispatch packet sequence
+        util.dispatchPackets(self, join, (self.server_addr, self.server_port))
 
         loop = True
 
@@ -57,11 +55,14 @@ class Client:
             msg = input()
 
             if (msg == "list"):
-                # make packet
-                pack = util.make_packet(msg=util.make_message("request_users_list", 2))
+                # make list message
+                listMsg = util.make_message("request_users_list", 2)
 
-                # send packet
-                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                # create a packet sequence for the message
+                list = util.packetSeqCreator(self, listMsg)
+                print(list)
+                # dispatch packet sequence
+                util.dispatchPackets(self, list, (self.server_addr, self.server_port))
 
             elif (msg[:3] == "msg"):
                 # make packet
@@ -117,17 +118,20 @@ class Client:
         loop = True
 
         while loop:
-            # receiving messages from clients
+            # listen through socket for server messages
             message, address = self.sock.recvfrom(4096)
 
-            # decode packet
-            msg = message.decode("utf-8")
+            # decode and parse
+            pack = message.decode("utf-8")
+            msg = util.parse_packet(pack)
 
-            # parse packet
-            msg = util.parse_packet(msg)
+            # send ack
+            #self.sock.sendto(util.make_packet("ack", int(msg[1]) + 1).encode("utf-8"), address)
+            # print(int(parsedPack[1]) + 1)
 
             #check for ack
             if msg[0] == "ack":
+                print(msg)
                 self.ackQ.put(msg)
                 continue
 
