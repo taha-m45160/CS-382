@@ -1,3 +1,4 @@
+# 1.0 complete
 '''
 This module defines the behavior of server in your Chat Application
 '''
