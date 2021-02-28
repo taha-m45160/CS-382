@@ -13,3 +13,11 @@ Assignment 1/PA01/testspart2/__pycache__/DuplicatePacketsTest.cpython-38.pyc
 Assignment 1/PA01/testspart2/__pycache__/OutOfOrderPacketsTest.cpython-38.pyc
 Assignment 1/PA01/testspart2/__pycache__/PacketLossTest.cpython-38.pyc
 Assignment 1/PA01/testspart2/__pycache__/WindowSizeTest.cpython-38.pyc
+Assignment 1 (Part 2.1)/Part 2.1/testspart2/__pycache__/WindowSizeTest.cpython-38.pyc
+.gitignore
+Assignment 1 (Part 2.1)/Part 2.1/testspart2/__pycache__/OutOfOrderPacketsTest.cpython-38.pyc
+Assignment 1 (Part 2.1)/Part 2.1/testspart2/__pycache__/DuplicatePacketsTest.cpython-38.pyc
+Assignment 1 (Part 2.1)/Part 2.1/testspart2/__pycache__/BasicTest.cpython-38.pyc
+Assignment 1 (Part 2.1)/Part 2.1/testspart2/__pycache__/BasicFunctionalityTest.cpython-38.pyc
+Assignment 1 (Part 2.1)/Part 2.1/testspart2/__pycache__/__init__.cpython-38.pyc
+Assignment 1 (Part 2.1)/Part 2.1/__pycache__/util.cpython-38.pyc

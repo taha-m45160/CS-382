@@ -26,6 +26,8 @@ class Server:
         #store client thread info
         self.clientQueues = {}
 
+        #store client acks
+        self.clientAckQueues = {}
 
     def handleClient(self, addr):
         modAddr = ','.join(map(str, addr)) # converts address to string
@@ -35,9 +37,10 @@ class Server:
 
             check = self.clientQueues.get(modAddr).get()
 
-            print(check)
+            print("From Queue:", check)
 
             if check[0] == "start":
+
                 packetSeq.append(check)
 
                 while True:
@@ -45,11 +48,10 @@ class Server:
                     packetSeq.append(self.clientQueues.get(modAddr).get())
                     
                     if packetSeq[-1][0] == "end":
-                        break    
-            
-            else:
-                continue
-    
+                        break
+
+            #print("Thread of", util.getKeyAtValue(self.clients, addr))
+
             msg = util.chunkRestorer(packetSeq)
             
             #break message
@@ -61,7 +63,7 @@ class Server:
                     #send server full message
                     #make packet
                     pack = util.make_packet(msg = util.make_message("ERR_SERVER_FULL", 2))
-                    self.sock.sendto(pack.encode("utf-8"), address)
+                    self.sock.sendto(pack.encode("utf-8"), addr)
                     
                     #disconnect client
                     print("disconnected: server full")
@@ -75,7 +77,7 @@ class Server:
                     pack = util.make_packet(msg = util.make_message("ERR_USERNAME_UNAVAILABLE", 2))
                     
                     #deliver packet
-                    self.sock.sendto(pack.encode("utf-8"), address)
+                    self.sock.sendto(pack.encode("utf-8"), addr)
                     
                     #disconnect client
                     print("disconnected: username not available")
@@ -138,7 +140,7 @@ class Server:
                         
                         # create a packet sequence for the message
                         list = util.packetSeqCreator(self, snd)
-                        print(list)
+                        #print(list)
                         # dispatch packet sequence
                         util.dispatchServerPackets(self, list, self.clients[i])
                         
@@ -161,7 +163,7 @@ class Server:
                     
                     continue
                     
-                print("file:", util.getUname(self.clients, address)) #print message
+                print("file:", util.getUname(self.clients, addr)) #print message
                 
                 userCount = int(msg[2]) #no of recipients
 
@@ -179,7 +181,7 @@ class Server:
                 for i in recipients:
                     if (i in self.clients):
                         # make message
-                        snd = util.util.make_message("forward_file", 4, paighaam)
+                        snd = util.make_message("forward_file", 4, paighaam)
                         
                         # create a packet sequence for the message
                         list = util.packetSeqCreator(self, snd)
@@ -193,7 +195,6 @@ class Server:
             elif (msg[0] == "disconnect"):
                 del self.clients[msg[2]]
                 print("disconnected:", msg[2])
-            
 
     def connectionHandler(self):
         """
@@ -223,6 +224,7 @@ class Server:
             if pack is None and parsedPack[0] == "start":
                 # create client threads and assign queues
                 self.clientQueues[modAddr] = queue.Queue()
+                self.clientAckQueues[modAddr] = queue.Queue()
                     
                 clientThread = threading.Thread(target = Server.handleClient, args = (self, address,))
                 clientThread.start()
@@ -231,9 +233,11 @@ class Server:
                 pack = self.clientQueues.get(modAddr)
                 pack.put(parsedPack)
 
+            elif parsedPack[0] == "ack":
+                self.clientAckQueues.get(modAddr).put(parsedPack)
+
             else:
                 pack.put(parsedPack)
-
 
     def start(self):
         '''

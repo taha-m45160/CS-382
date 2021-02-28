@@ -4,11 +4,12 @@ This file contains basic utility functions that you can use.
 import binascii
 import random
 import sys
+import math
 
 MAX_NUM_CLIENTS = 10
 TIME_OUT = 0.5 # 500ms
 NUM_OF_RETRANSMISSIONS = 3
-CHUNK_SIZE = 2 # 1400 Bytes
+CHUNK_SIZE = 1400 # 1400 Bytes
 
 def validate_checksum(message):
     '''
@@ -90,6 +91,19 @@ def getUname(dict, addr):
     return "DNE"
 
 
+def getKeyAtValue(dic, item):
+    """
+    Gets the key at which item
+    is stored in the dictionary
+    """
+
+    for key, item0 in dic.items():
+        if item == item0:
+            return key
+ 
+    return None
+
+
 def msgChunker(msg):
     '''
     converts message into chunks of 
@@ -99,7 +113,7 @@ def msgChunker(msg):
     '''
     msgSize = len(msg)
 
-    chunkNo = round(msgSize / CHUNK_SIZE)
+    chunkNo = math.ceil(msgSize / CHUNK_SIZE)
 
     chunkyMsg = []  #store a chunk at each index
 
@@ -162,11 +176,12 @@ def dispatchClientPackets(self, packetSeq, addr):
 
     for i in range(len(packetSeq)):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+        #print("Packet Sent:", packetSeq[i])
 
         ack = self.ackQ.get(block=True)
 
         if (ack[0] == "ack"):
-            # print("ack recvd", ack[1])
+            #print("Ack Received:", ack[1])
             continue
 
 
@@ -182,8 +197,10 @@ def dispatchServerPackets(self, packetSeq, addr):
     for i in range(len(packetSeq)):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-        ack = self.clientQueues.get(modAddr).get(block=True)
+        print("Dispatched Packet:", packetSeq[i])
+
+        ack = self.clientAckQueues.get(modAddr).get(block=True)
 
         if (ack[0] == "ack"):
-            # print("ack recvd", ack[1])
+            print("Ack Received:", ack[1])
             continue

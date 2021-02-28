@@ -74,7 +74,6 @@ class Client:
                 # dispatch packet sequence
                 util.dispatchClientPackets(self, list, (self.server_addr, self.server_port))
 
-
             elif (msg[:4] == "file"):
                 # get file info
                 userInput = util.breakMessage(msg)
@@ -94,7 +93,6 @@ class Client:
 
                 # dispatch packet sequence
                 util.dispatchClientPackets(self, list, (self.server_addr, self.server_port))
-
 
             elif (msg == "quit"):
                 print("quitting")
@@ -127,12 +125,16 @@ class Client:
         packetSeq = []
 
         while loop:
+
             # listen through socket for server messages
             message, address = self.sock.recvfrom(4096)
+            print("Thread of", self.name)
 
             # decode and parse
             pack = message.decode("utf-8")
             parPack = util.parse_packet(pack)
+
+            print(parPack)
 
             # check for ack
             if parPack[0] == "ack":
