@@ -10,6 +10,7 @@ from threading import Thread
 import os
 import util
 import queue
+import time
 
 '''
 Write your code inside this class. 
@@ -98,13 +99,16 @@ class Client:
                 print("quitting")
                 loop = False
 
-                # make packet
-                pack = util.make_packet(msg=util.make_message("disconnect", 1, self.name))
+                # make quit message
+                quitMsg = util.make_message("disconnect", 1, self.name)
 
-                # deliver packet
-                self.sock.sendto(pack.encode("utf-8"), (self.server_addr, self.server_port))
+                # create a packet sequence for the message
+                quit = util.packetSeqCreator(self, quitMsg)
 
-                self.sock.close()
+                # dispatch packet sequence
+                util.dispatchClientPackets(self, quit, (self.server_addr, self.server_port))
+
+                #self.sock.close()
 
             elif (msg == "help"):
                 print("Help:")
@@ -128,13 +132,13 @@ class Client:
 
             # listen through socket for server messages
             message, address = self.sock.recvfrom(4096)
-            print("Thread of", self.name)
+            #print("Thread of", self.name)
 
             # decode and parse
             pack = message.decode("utf-8")
             parPack = util.parse_packet(pack)
 
-            print(parPack)
+            #print(parPack)
 
             # check for ack
             if parPack[0] == "ack":
@@ -160,19 +164,22 @@ class Client:
                 # disconnect from server
                 print("disconnected: server full")
                 loop = False
-                self.sock.close()
+                #self.sock.close()
+                #break
 
             elif (msg[0] == "ERR_USERNAME_UNAVAILABLE"):
                 # disconnect from server
                 print("disconnected: username not available")
                 loop = False
-                self.sock.close()
+                #self.sock.close()
+                #break
 
             elif (msg[0] == "ERR_UNKNOWN_MESSAGE"):
                 # disconnect from server
                 print("disconnected: server received an unknown command")
                 loop = False
-                self.sock.close()
+                #self.sock.close()
+                #break
 
             elif (msg[0] == "response_users_list"):
                 print("list:", ' '.join(sorted(msg[2:])))

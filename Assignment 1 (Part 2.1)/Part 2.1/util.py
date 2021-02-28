@@ -197,10 +197,10 @@ def dispatchServerPackets(self, packetSeq, addr):
     for i in range(len(packetSeq)):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-        print("Dispatched Packet:", packetSeq[i])
+        #print("Dispatched Packet:", packetSeq[i])
 
         ack = self.clientAckQueues.get(modAddr).get(block=True)
 
         if (ack[0] == "ack"):
-            print("Ack Received:", ack[1])
+            #print("Ack Received:", ack[1])
             continue
