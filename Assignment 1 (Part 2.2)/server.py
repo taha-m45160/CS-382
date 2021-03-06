@@ -222,8 +222,17 @@ class Server:
             # listen through socket for client connections
             message, address = self.sock.recvfrom(4096)
 
-            # decode and parse
+            # decode
             pack = message.decode("utf-8")
+
+            # validate checksum and update flag
+            flag = util.validate_checksum(pack)
+
+            #drop packet if flag is false
+            if flag is False:
+                continue
+
+            # parse
             parsedPack = util.parse_packet(pack)
 
             if parsedPack[0] != "ack":
