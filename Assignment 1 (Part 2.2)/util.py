@@ -9,7 +9,7 @@ import math
 MAX_NUM_CLIENTS = 10
 TIME_OUT = 0.5 # 500ms
 NUM_OF_RETRANSMISSIONS = 3
-CHUNK_SIZE = 1400 # 1400 Bytes
+CHUNK_SIZE = 2 # 1400 Bytes
 
 def validate_checksum(message):
     '''
