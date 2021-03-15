@@ -37,12 +37,11 @@ class Server:
         while loop:
             packetSeq = []
 
+            # checks for start packet
             check = self.clientQueues.get(modAddr).get()
 
-            #print("From Queue:", check)
-
+            # get and store all relevant packets for a particular msg
             if check[0] == "start":
-
                 packetSeq.append(check)
 
                 while True:

@@ -174,19 +174,41 @@ def dispatchClientPackets(self, packetSeq, addr):
     to the SERVER
     """
 
+    khirki = [] # window implemented as a list
+    startSeqNo = int(parse_packet(packetSeq[0])[1]) # sequence no of start packet
+
     # send window_size no of packets first
     for i in range(self.window):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-    for j in range(len(packetSeq)):
+        # add sent packet to window
+        khirki.append(int(parse_packet(packetSeq[i])[1])) # (index, sequence_no)
+
+    # iterator
+    itr = 1
+
+    for j in range(self.window, len(packetSeq)):
+        # check if ack has been received
         ack = self.ackQ.get(block=True)
 
-        if (ack[0] == "ack"):
-            # print("Ack Received:", ack[1])
-            continue
+        if (int(ack[1]) != startSeqNo + itr):
+            # deal all relevant cases to packet/ack loss
+            print("ack/packet lost")
+            pass
 
-        self.sock.sendto(packetSeq[j].encode("utf-8"), addr)
-        #print("Packet Sent:", packetSeq[i])
+        else:
+            # dispatch packet
+            self.sock.sendto(packetSeq[j].encode("utf-8"), addr)
+
+            # slide window
+            khirki = khirki[1:]
+            khirki.append(int(parse_packet(packetSeq[j])[1]))  # (index, sequence_no)
+
+            # increment iterator
+            itr += 1
+
+
+
 
 
 def dispatchServerPackets(self, packetSeq, addr):

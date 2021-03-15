@@ -40,6 +40,7 @@ class Client:
         Start by sending the server a JOIN message.
         Waits for userinput and then processes it
         """
+
         # make join message
         joinMsg = util.make_message("join", 1, self.name)
 
