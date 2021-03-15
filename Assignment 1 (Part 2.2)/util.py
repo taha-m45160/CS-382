@@ -174,15 +174,19 @@ def dispatchClientPackets(self, packetSeq, addr):
     to the SERVER
     """
 
-    for i in range(len(packetSeq)):
+    # send window_size no of packets first
+    for i in range(self.window):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
-        #print("Packet Sent:", packetSeq[i])
 
+    for j in range(len(packetSeq)):
         ack = self.ackQ.get(block=True)
 
         if (ack[0] == "ack"):
-            #print("Ack Received:", ack[1])
+            # print("Ack Received:", ack[1])
             continue
+
+        self.sock.sendto(packetSeq[j].encode("utf-8"), addr)
+        #print("Packet Sent:", packetSeq[i])
 
 
 def dispatchServerPackets(self, packetSeq, addr):

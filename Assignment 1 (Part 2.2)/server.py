@@ -235,8 +235,8 @@ class Server:
             # parse
             parsedPack = util.parse_packet(pack)
 
+            # send ack for received packet
             if parsedPack[0] != "ack":
-                # send ack
                 self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
 
             modAddr = ','.join(map(str, address))  # converts address to string
