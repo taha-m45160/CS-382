@@ -23,7 +23,6 @@ class Client:
     '''
     This is the main Client Class. 
     '''
-
     def __init__(self, username, dest, port, window_size):
         self.server_addr = dest
         self.server_port = port

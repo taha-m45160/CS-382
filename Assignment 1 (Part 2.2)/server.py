@@ -222,20 +222,25 @@ class Server:
             # listen through socket for client connections
             message, address = self.sock.recvfrom(4096)
 
+            # modify address of client as string
+            modAddr = ','.join(map(str, address))
+
             # decode and parse
-            pack = message.decode("utf-8")
-            parsedPack = util.parse_packet(pack)
+            decodedPacket = message.decode("utf-8")
+            parsedPack = util.parse_packet(decodedPacket) # returns tuple e.g. ('start', '4341223121687468626', '', '3836179669')
 
-            if parsedPack[0] != "ack":
+
+            # if parsedPack[0] != "ack":
+            #     # send ack
+            #     self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)  
+
+            if parsedPack[0] == "start":
                 # send ack
-                self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
+                self.sock.sendto(util.make_packet("ack", parsedPack[1] + 1).encode("utf-8"), address)
 
-            modAddr = ','.join(map(str, address))  # converts address to string
 
-            # redirect packets to clients based on address
-            pack = self.clientQueues.get(modAddr)
-
-            if pack is None and parsedPack[0] == "start":
+            # handle new client
+            if clientQ is None and parsedPack[0] == "start":
                 # create client threads and assign queues
                 self.clientQueues[modAddr] = queue.Queue()
                 self.clientAckQueues[modAddr] = queue.Queue()
@@ -244,14 +249,16 @@ class Server:
                 clientThread.start()
 
                 # redirect packets to clients based on address
-                pack = self.clientQueues.get(modAddr)
-                pack.put(parsedPack)
+                clientQ = self.clientQueues.get(modAddr)
+                clientQ.put(parsedPack)
 
+            # redirect acks to relevant client queue
             elif parsedPack[0] == "ack":
                 self.clientAckQueues.get(modAddr).put(parsedPack)
 
+            # handle rest of the packets
             else:
-                pack.put(parsedPack)
+                clientQ.put(parsedPack)
 
 # Do not change this part of code
 if __name__ == "__main__":

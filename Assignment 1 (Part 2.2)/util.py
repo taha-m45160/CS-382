@@ -174,15 +174,39 @@ def dispatchClientPackets(self, packetSeq, addr):
     to the SERVER
     """
 
-    for i in range(len(packetSeq)):
-        self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
-        #print("Packet Sent:", packetSeq[i])
+    while True:
+        # send and handle start packet first
+        self.sock.sendto(packetSeq[0].encode("utf-8"), addr)
 
-        ack = self.ackQ.get(block=True)
+        try:
+            getAck = self.ackQ.get(block = True, timeout = TIME_OUT)
 
-        if (ack[0] == "ack"):
-            #print("Ack Received:", ack[1])
+        except:
+            # retransmit start packet
             continue
+
+        # move ahead if ack for start pack received
+        break
+        
+    # window implemented as a list
+    khirki = []
+
+    # sequence no of start packet
+    startSeqNo = int(parse_packet(packetSeq[0])[1])
+
+    # send first 'window_size' no of packets in flight
+    i = 1
+    while (i < self.window + 1):
+        self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+
+        # add sent packet to window
+        khirki.append(int(parse_packet(packetSeq[i])[1])) # (index, sequence_no)
+
+        i += 1
+    
+    while len(khirki):
+        getAck = self.ackQ.get(block = True, timeout = TIME_OUT)
+
 
 
 def dispatchServerPackets(self, packetSeq, addr):
