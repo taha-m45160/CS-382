@@ -9,7 +9,7 @@ import math
 MAX_NUM_CLIENTS = 10
 TIME_OUT = 0.5 # 500ms
 NUM_OF_RETRANSMISSIONS = 3
-CHUNK_SIZE = 1400 # 1400 Bytes
+CHUNK_SIZE = 2 # 1400 Bytes
 
 def validate_checksum(message):
     '''
@@ -132,7 +132,7 @@ def chunkRestorer(chunklist):
 
     temp = ""
     for i in range(len(chunklist)):
-        temp += chunklist[i][2]
+        temp += chunklist[i][1][2]
 
     return temp
 
@@ -158,10 +158,10 @@ def packetSeqCreator(self, madeMsg):
         # append data packets
         for i in range(len(chunkedMessage)):
             # make and store packets
-            packetSeq.append(make_packet("data", seqNo + (2 * i + 2), str(chunkedMessage[i])))
+            packetSeq.append(make_packet("data", seqNo + i + 1, str(chunkedMessage[i])))
 
         # append end packet to list
-        packetSeq.append(make_packet("end", 2 * (len(chunkedMessage) + 1) + seqNo, ))
+        packetSeq.append(make_packet("end", len(chunkedMessage) + seqNo + 1, ))
 
         return packetSeq
 
@@ -174,39 +174,22 @@ def dispatchClientPackets(self, packetSeq, addr):
     to the SERVER
     """
 
-    while True:
-        # send and handle start packet first
-        self.sock.sendto(packetSeq[0].encode("utf-8"), addr)
-
-        try:
-            getAck = self.ackQ.get(block = True, timeout = TIME_OUT)
-
-        except:
-            # retransmit start packet
-            continue
-
-        # move ahead if ack for start pack received
-        break
-        
-    # window implemented as a list
-    khirki = []
-
-    # sequence no of start packet
-    startSeqNo = int(parse_packet(packetSeq[0])[1])
-
-    # send first 'window_size' no of packets in flight
-    i = 1
-    while (i < self.window + 1):
+    for i in range(len(packetSeq)):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-        # add sent packet to window
-        khirki.append(int(parse_packet(packetSeq[i])[1])) # (index, sequence_no)
+        count = NUM_OF_RETRANSMISSIONS
+        try:
+            ack = self.ackQ.get(block=True, timeout=TIME_OUT)
 
-        i += 1
-    
-    while len(khirki):
-        getAck = self.ackQ.get(block = True, timeout = TIME_OUT)
+        except:
+            count -= 1
 
+            if not count:
+                # quitting
+                print("quitting")
+
+            else:
+                continue
 
 
 def dispatchServerPackets(self, packetSeq, addr):
@@ -221,10 +204,27 @@ def dispatchServerPackets(self, packetSeq, addr):
     for i in range(len(packetSeq)):
         self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-        #print("Dispatched Packet:", packetSeq[i])
+        count = NUM_OF_RETRANSMISSIONS
+        try:
+            ack = self.clientAckQueues.get(modAddr).get(block = True, timeout = TIME_OUT)
 
-        ack = self.clientAckQueues.get(modAddr).get(block=True)
+        except:
+            count -= 1
 
-        if (ack[0] == "ack"):
-            #print("Ack Received:", ack[1])
-            continue
+            if not count:
+                # quitting
+                print("quitting")
+
+            else:
+                continue
+
+def findDuplicate(packetList, seqNo):
+    """
+    returns True if duplicate packet exists
+    """
+
+    for i in range(len(packetList)):
+        if packetList[i][0] == seqNo:
+            return True
+
+    return False

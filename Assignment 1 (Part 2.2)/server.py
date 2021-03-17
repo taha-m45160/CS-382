@@ -35,31 +35,38 @@ class Server:
         loop = True
 
         while loop:
+            # stores all received packets in sequence
             packetSeq = []
 
-            check = self.clientQueues.get(modAddr).get()
+            # stores queue of current client
+            clientQ = self.clientQueues.get(modAddr)
 
-            #print("From Queue:", check)
+            # removes and returns a packet from client's queue
+            check = clientQ.get()
 
             if check[0] == "start":
-
-                packetSeq.append(check)
+                if (not util.findDuplicate(packetSeq, int(check[1]))):
+                    # discard if duplicate exists else append
+                    packetSeq.append((int(check[1]), check))
 
                 while True:
                     # get packets
-                    packetSeq.append(self.clientQueues.get(modAddr).get())
+                    temp = clientQ.get()
+                    packetSeq.append((int(temp[1]), temp))
+                
+                    if (not util.findDuplicate(packetSeq, int(temp[1]))):
+                        packetSeq.append((int(temp[1]), temp))
                     
-                    if packetSeq[-1][0] == "end":
+                    if packetSeq[-1][1][0] == "end":
                         break
 
-            #print("Thread of", util.getKeyAtValue(self.clients, addr))
+            # sort packet sequence 
+            packetSeq.sort(key = lambda tup: tup[0])
 
             msg = util.chunkRestorer(packetSeq)
             
             #break message
             msg = util.breakMessage(msg)
-
-            #print(msg)
 
             if (msg[0] == "join"):
                 #check if server full
@@ -222,25 +229,20 @@ class Server:
             # listen through socket for client connections
             message, address = self.sock.recvfrom(4096)
 
-            # modify address of client as string
-            modAddr = ','.join(map(str, address))
-
             # decode and parse
-            decodedPacket = message.decode("utf-8")
-            parsedPack = util.parse_packet(decodedPacket) # returns tuple e.g. ('start', '4341223121687468626', '', '3836179669')
+            pack = message.decode("utf-8")
+            parsedPack = util.parse_packet(pack)
 
-
-            # if parsedPack[0] != "ack":
-            #     # send ack
-            #     self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)  
-
-            if parsedPack[0] == "start":
+            if parsedPack[0] != "ack":
                 # send ack
-                self.sock.sendto(util.make_packet("ack", parsedPack[1] + 1).encode("utf-8"), address)
+                self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
 
+            modAddr = ','.join(map(str, address))  # converts address to string
 
-            # handle new client
-            if clientQ is None and parsedPack[0] == "start":
+            # redirect packets to clients based on address
+            pack = self.clientQueues.get(modAddr)
+
+            if pack is None and parsedPack[0] == "start":
                 # create client threads and assign queues
                 self.clientQueues[modAddr] = queue.Queue()
                 self.clientAckQueues[modAddr] = queue.Queue()
@@ -249,16 +251,14 @@ class Server:
                 clientThread.start()
 
                 # redirect packets to clients based on address
-                clientQ = self.clientQueues.get(modAddr)
-                clientQ.put(parsedPack)
+                pack = self.clientQueues.get(modAddr)
+                pack.put(parsedPack)
 
-            # redirect acks to relevant client queue
             elif parsedPack[0] == "ack":
                 self.clientAckQueues.get(modAddr).put(parsedPack)
 
-            # handle rest of the packets
             else:
-                clientQ.put(parsedPack)
+                pack.put(parsedPack)
 
 # Do not change this part of code
 if __name__ == "__main__":

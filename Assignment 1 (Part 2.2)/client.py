@@ -23,6 +23,7 @@ class Client:
     '''
     This is the main Client Class. 
     '''
+
     def __init__(self, username, dest, port, window_size):
         self.server_addr = dest
         self.server_port = port
@@ -131,13 +132,10 @@ class Client:
 
             # listen through socket for server messages
             message, address = self.sock.recvfrom(4096)
-            #print("Thread of", self.name)
 
             # decode and parse
             pack = message.decode("utf-8")
             parPack = util.parse_packet(pack)
-
-            #print(parPack)
 
             # check for ack
             if parPack[0] == "ack":
@@ -145,14 +143,18 @@ class Client:
                 continue
 
             else:
-                packetSeq.append(parPack)
+                if (not util.findDuplicate(packetSeq, int(parPack[1]))):
+                    packetSeq.append((int(parPack[1]), parPack))
+                else:
+                    continue
 
                 self.sock.sendto(util.make_packet("ack", int(parPack[1]) + 1).encode("utf-8"), address)
 
-                if packetSeq[-1][0] != "end":
+                if packetSeq[-1][1][0] != "end":
                     continue
 
-            #print(packetSeq)
+            # sort packet sequence 
+            packetSeq.sort(key = lambda tup: tup[0])
 
             msg = util.chunkRestorer(packetSeq)
 
