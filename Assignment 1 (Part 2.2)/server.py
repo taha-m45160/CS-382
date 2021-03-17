@@ -46,19 +46,25 @@ class Server:
 
             if check[0] == "start":
                 if (not util.findDuplicate(packetSeq, int(check[1]))):
+                    self.sock.sendto(util.make_packet("ack", int(check[1]) + 1).encode("utf-8"), addr)
+                    
                     # discard if duplicate exists else append
                     packetSeq.append((int(check[1]), check))
 
                 while True:
                     # get packets
                     temp = clientQ.get()
-                    packetSeq.append((int(temp[1]), temp))
+
+                    #packetSeq.append((int(temp[1]), temp))
                 
                     if (not util.findDuplicate(packetSeq, int(temp[1]))):
+                        self.sock.sendto(util.make_packet("ack", int(temp[1]) + 1).encode("utf-8"), addr)
                         packetSeq.append((int(temp[1]), temp))
-                    
-                    if packetSeq[-1][1][0] == "end":
-                        break
+
+                        if packetSeq[-1][1][0] == "end":
+                        #self.sock.sendto(util.make_packet("ack", int(packetSeq[-1][1][1]) + 1).encode("utf-8"), addr)
+                            break
+                
 
             # sort packet sequence 
             packetSeq.sort(key = lambda tup: tup[0])
@@ -67,6 +73,9 @@ class Server:
             
             #break message
             msg = util.breakMessage(msg)
+
+            if(len(msg) < 1):
+                continue 
 
             if (msg[0] == "join"):
                 #check if server full
@@ -79,7 +88,7 @@ class Server:
 
                     # dispatch packet sequence
                     util.dispatchServerPackets(self, list, addr)
-                    
+                
                     #disconnect client
                     print("disconnected: server full")
                     loop = False
@@ -96,6 +105,7 @@ class Server:
 
                     # dispatch packet sequence
                     util.dispatchServerPackets(self, list, addr)
+
 
                     #disconnect client
                     print("disconnected: username not available")
@@ -162,7 +172,7 @@ class Server:
                         #print(list)
                         # dispatch packet sequence
                         util.dispatchServerPackets(self, list, self.clients[i])
-                        
+
                     else:
                         print("msg:", util.getUname(self.clients, addr), "to non-existent user", i)
             
@@ -179,6 +189,7 @@ class Server:
 
                     # dispatch packet sequence
                     util.dispatchServerPackets(self, list, addr)
+            
 
                     continue
                     
@@ -208,6 +219,7 @@ class Server:
                         # dispatch packet sequence
                         util.dispatchServerPackets(self, list, self.clients[i])
 
+
                     else:
                         print("file:", util.getUname(self.clients, addr), "to non-existent user", i)
               
@@ -233,9 +245,12 @@ class Server:
             pack = message.decode("utf-8")
             parsedPack = util.parse_packet(pack)
 
-            if parsedPack[0] != "ack":
-                # send ack
-                self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
+            if not util.validate_checksum(pack):
+                continue
+
+            # if parsedPack[0] != "ack":
+            #     # send ack
+            #     self.sock.sendto(util.make_packet("ack", int(parsedPack[1]) + 1).encode("utf-8"), address)
 
             modAddr = ','.join(map(str, address))  # converts address to string
 

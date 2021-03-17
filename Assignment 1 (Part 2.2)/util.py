@@ -9,7 +9,7 @@ import math
 MAX_NUM_CLIENTS = 10
 TIME_OUT = 0.5 # 500ms
 NUM_OF_RETRANSMISSIONS = 3
-CHUNK_SIZE = 2 # 1400 Bytes
+CHUNK_SIZE = 1400 # 1400 Bytes
 
 def validate_checksum(message):
     '''
@@ -175,20 +175,15 @@ def dispatchClientPackets(self, packetSeq, addr):
     """
 
     for i in range(len(packetSeq)):
-        self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+        for j in range(NUM_OF_RETRANSMISSIONS):
+            self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+            self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-        count = NUM_OF_RETRANSMISSIONS
-        try:
-            ack = self.ackQ.get(block=True, timeout=TIME_OUT)
+            try:
+                ack = self.ackQ.get(block=True, timeout=TIME_OUT)
+                break
 
-        except:
-            count -= 1
-
-            if not count:
-                # quitting
-                print("quitting")
-
-            else:
+            except:
                 continue
 
 
@@ -202,20 +197,14 @@ def dispatchServerPackets(self, packetSeq, addr):
     modAddr = ','.join(map(str, addr))  # converts address to string
 
     for i in range(len(packetSeq)):
-        self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
+        for j in range(NUM_OF_RETRANSMISSIONS):
+            self.sock.sendto(packetSeq[i].encode("utf-8"), addr)
 
-        count = NUM_OF_RETRANSMISSIONS
-        try:
-            ack = self.clientAckQueues.get(modAddr).get(block = True, timeout = TIME_OUT)
+            try:
+                ack = self.clientAckQueues.get(modAddr).get(block=True, timeout=TIME_OUT)
+                break
 
-        except:
-            count -= 1
-
-            if not count:
-                # quitting
-                print("quitting")
-
-            else:
+            except:
                 continue
 
 def findDuplicate(packetList, seqNo):

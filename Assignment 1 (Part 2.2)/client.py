@@ -108,7 +108,6 @@ class Client:
                 # dispatch packet sequence
                 util.dispatchClientPackets(self, quit, (self.server_addr, self.server_port))
 
-                #self.sock.close()
 
             elif (msg == "help"):
                 print("Help:")
@@ -129,13 +128,14 @@ class Client:
         packetSeq = []
 
         while loop:
-
             # listen through socket for server messages
             message, address = self.sock.recvfrom(4096)
 
             # decode and parse
             pack = message.decode("utf-8")
             parPack = util.parse_packet(pack)
+
+            endPack = False
 
             # check for ack
             if parPack[0] == "ack":
@@ -144,14 +144,21 @@ class Client:
 
             else:
                 if (not util.findDuplicate(packetSeq, int(parPack[1]))):
+                    self.sock.sendto(util.make_packet("ack", int(parPack[1]) + 1).encode("utf-8"), address)
                     packetSeq.append((int(parPack[1]), parPack))
+
+                    if packetSeq[-1][1][0] == "end":
+                        endPack =True
+                        self.sock.sendto(util.make_packet("ack", int(parPack[1]) + 1).encode("utf-8"), address)
+                    
+                    else:
+                        continue
+
                 else:
                     continue
 
-                self.sock.sendto(util.make_packet("ack", int(parPack[1]) + 1).encode("utf-8"), address)
-
-                if packetSeq[-1][1][0] != "end":
-                    continue
+            if not endPack:
+                continue
 
             # sort packet sequence 
             packetSeq.sort(key = lambda tup: tup[0])
