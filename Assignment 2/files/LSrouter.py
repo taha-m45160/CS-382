@@ -21,6 +21,7 @@ class LSrouter(Router):
         self.fwdTable = {}  # created based network graph
         self.trackSeq = {}  #
 
+
     def handlePacket(self, port, packet):
         """TODO: process incoming packet"""
         if packet.isTraceroute():
@@ -84,7 +85,7 @@ class LSrouter(Router):
             self.last_time = timeMillisecs
             # Hints:
             # broadcast the link state of this router to all neighbors
-            self.broadcastState()
+            #self.broadcastState()
 
 
     def debugString(self):
@@ -109,9 +110,9 @@ class LSrouter(Router):
     def broadcastState(self):
         self.seqNo += 1
         state = str(self.seqNo) + " " + json.dumps(self.linkState)  
-        print(state)
+        #print(state)
         for node, port in self.fwdTable.items():
-            print(node, " ", port)
+            #print(node, " ", port)
             self.send(port, Packet(2, self.addr, node, state))
 
         return
