@@ -32,6 +32,7 @@ class LSrouter(Router):
 
             else:
                 #print(packet.srcAddr, "to", packet.dstAddr, "via", self.addr, self.fwdTable)
+                #print(self.addr, "'s Graph", self.myNetwork)
                 pass
     
         else:
@@ -42,12 +43,14 @@ class LSrouter(Router):
 
             # source address of routing packet
             endpoint = packet.srcAddr
-            print(endpoint)
+
+            if self.linkStates.get(endpoint) is not None:
+                print("Routing Packet from:", packet.srcAddr)
+                print("Current State:", self.linkStates[endpoint])
+                print("New State:", state)
+
 
             currSeqNo = self.trackSeq.get(endpoint)
-            print("CURR:", currSeqNo)
-
-            print("Updated:", seqNo)
 
             # check for seqNo
             if currSeqNo is None:
@@ -56,13 +59,14 @@ class LSrouter(Router):
             elif currSeqNo >= seqNo:
                 return
 
-            self.trackSeq[endpoint] = seqNo
-
             # update the local copy of the link state
             if self.linkStates.get(endpoint) is None:
+                self.trackSeq[endpoint] = seqNo
                 self.linkStates[endpoint] = state
 
             elif self.linkStates.get(endpoint) is not state:
+                self.trackSeq[endpoint] = seqNo
+
                 # reset network graph for endpoint
                 for n in self.linkStates[endpoint].keys():
                     self.myNetwork.remove_edge(endpoint, n)
@@ -77,10 +81,10 @@ class LSrouter(Router):
                 self.myNetwork.add_edge(endpoint, n, c)
 
             # update the forwarding table
-            self.runDijkstar()
+            self.updateFwdTable()
 
             # broadcast the packet to other neighbors
-            self.broadcastState()
+            self.broadcastState(endpoint, json.loads(packet.content))
 
         return
 
@@ -103,12 +107,12 @@ class LSrouter(Router):
         self.updateFwdTable(endpoint, port)
 
         # broadcast the new link state of this router to all neighbors
-        self.broadcastState()
+        self.broadcastState(self.addr, self.localState, seqNo=self.seqNo)
 
 
     def handleRemoveLink(self, port):
         """TODO: handle removed link"""
-        
+
         # update link state version
         self.seqNo += 1
         self.trackSeq[self.addr] = self.seqNo
@@ -125,7 +129,7 @@ class LSrouter(Router):
         self.updateFwdTable(endpoint, port, True)
 
         # broadcast the new link state of this router to all neighbors
-        self.broadcastState()
+        self.broadcastState(self.addr, self.localState, seqNo=self.seqNo)
 
 
     def handleTime(self, timeMillisecs):
@@ -134,7 +138,11 @@ class LSrouter(Router):
             self.last_time = timeMillisecs
             # Hints:
             # broadcast the link state of this router to all neighbors
-            self.broadcastState()
+            # increment sequence no
+            self.seqNo += 1
+            self.trackSeq[self.addr] = self.seqNo
+
+            self.broadcastState(self.addr, self.localState, seqNo=self.seqNo)
 
 
     def debugString(self):
@@ -157,7 +165,7 @@ class LSrouter(Router):
             return None
 
 
-    def updateFwdTable(self, endpoint, port, remove = False):
+    def updateFwdTable(self, endpoint = None, port = None, remove = False):
         """
         updates the forwarding table by including 
         a newly added link or removing a 
@@ -166,13 +174,14 @@ class LSrouter(Router):
         in the network
         """
 
-        if not remove:
-            # add new link entry
-            self.fwdTable[endpoint] = port
+        if endpoint is not None and port is not None:
+            if not remove:
+                # add new link entry
+                self.fwdTable[endpoint] = port
         
-        else:
-            # remove link entry
-            del self.fwdTable[endpoint]
+            else:
+                # remove link entry
+                del self.fwdTable[endpoint]
 
         # update nodes in fwd table
         for k in self.myNetwork.keys():
@@ -189,14 +198,15 @@ class LSrouter(Router):
         return
 
     
-    def broadcastState(self):
-        state = self.localState
-        state["seqNo"] = self.seqNo
+    def broadcastState(self, addr, state, seqNo = None):
+        if seqNo is not None:
+            state["seqNo"] = seqNo
+
         state = json.dumps(state)
         
         for node, port in self.fwdTable.items():
-            if node is not self.addr:
-                self.send(port, Packet(2, self.addr, node, state))
+            if node in self.localState.keys() and node is not self.addr:
+                self.send(port, Packet(2, addr, node, state))
 
         return
 
