@@ -18,23 +18,20 @@ class LSrouter(Router):
         self.localState = {}
         self.linkStates = {}
         self.fwdTable = {}
-        self.myNetwork = Graph(undirected = True)
         self.trackSeq = {}
-
+        self.myNetwork = Graph(undirected = True)
 
 
     def handlePacket(self, port, packet):
-        """TODO: process incoming packet"""
+        """
+        process incoming packet
+        """
+
         if packet.isTraceroute():
             #   send packet based on forwarding table
             if packet.dstAddr in self.fwdTable:
                 self.send(self.fwdTable[packet.dstAddr], packet)
 
-            else:
-                #print(packet.srcAddr, "to", packet.dstAddr, "via", self.addr, self.fwdTable)
-                #print(self.addr, "'s Graph", self.myNetwork)
-                pass
-    
         else:
             # process state and seqNo from incoming packet
             state = json.loads(packet.content)
@@ -44,15 +41,9 @@ class LSrouter(Router):
             # source address of routing packet
             endpoint = packet.srcAddr
 
-            if self.linkStates.get(endpoint) is not None:
-                print("Routing Packet from:", packet.srcAddr)
-                print("Current State:", self.linkStates[endpoint])
-                print("New State:", state)
-
-
+            # check for seqNo
             currSeqNo = self.trackSeq.get(endpoint)
 
-            # check for seqNo
             if currSeqNo is None:
                 pass
 
@@ -69,7 +60,8 @@ class LSrouter(Router):
 
                 # reset network graph for endpoint
                 for n in self.linkStates[endpoint].keys():
-                    self.myNetwork.remove_edge(endpoint, n)
+                    if n in self.myNetwork.get(endpoint):
+                        self.myNetwork.remove_edge(endpoint, n)
 
                 self.linkStates[endpoint] = state
 
@@ -86,11 +78,11 @@ class LSrouter(Router):
             # broadcast the packet to other neighbors
             self.broadcastState(endpoint, json.loads(packet.content))
 
-        return
-
 
     def handleNewLink(self, port, endpoint, cost):
-        """TODO: handle new link"""
+        """
+        handles new link
+        """
 
         # update link state version
         self.seqNo += 1
@@ -111,7 +103,9 @@ class LSrouter(Router):
 
 
     def handleRemoveLink(self, port):
-        """TODO: handle removed link"""
+        """
+        handles removed link
+        """
 
         # update link state version
         self.seqNo += 1
@@ -133,21 +127,15 @@ class LSrouter(Router):
 
 
     def handleTime(self, timeMillisecs):
-        """TODO: handle current time"""
+        """
+        handle current time
+        """
+
         if timeMillisecs - self.last_time >= self.heartbeatTime:
             self.last_time = timeMillisecs
-            # Hints:
+
             # broadcast the link state of this router to all neighbors
-            # increment sequence no
-            self.seqNo += 1
-            self.trackSeq[self.addr] = self.seqNo
-
             self.broadcastState(self.addr, self.localState, seqNo=self.seqNo)
-
-
-    def debugString(self):
-        """TODO: generate a string for debugging in network visualizer"""
-        return ""
 
 
     def getKey(self, dict, val):
@@ -199,6 +187,11 @@ class LSrouter(Router):
 
     
     def broadcastState(self, addr, state, seqNo = None):
+        """
+        broadcasts the link state
+        to other linked routers
+        """
+
         if seqNo is not None:
             state["seqNo"] = seqNo
 
@@ -237,5 +230,3 @@ class LSrouter(Router):
 
                 self.fwdTable[node] = self.fwdTable[pathInfo.nodes[1]]
 
-                        
-        return
