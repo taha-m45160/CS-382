@@ -24,9 +24,11 @@ class Node:
 		DO NOT EDIT ANYTHING ABOVE THIS LINE
 		'''
 		# Set value of the following variables appropriately to pass Intialization test
-		self.successor = None
-		self.predecessor = None
+		self.successor = (self.host, self.port)
+		self.predecessor = (self.host, self.port)
+
 		# additional state variables
+		otherSuccessors = {self.key : self.successor}
 
 
 
@@ -44,6 +46,26 @@ class Node:
 		'''
 		 Function to handle each inbound connection, called as a thread from the listener.
 		'''
+
+		while True:
+			# receive message
+			message = client.recv(4096)
+
+			# decode message
+			msg = message.decode("utf-8")
+
+			# process message
+			if msg[0] = "lookup":
+				pass
+			
+			elif msg[0] = "file":
+				pass
+
+			elif msg[0] = "other":
+				pass
+			
+			else:
+				pass
 
 	def listener(self):
 		'''
@@ -64,11 +86,24 @@ class Node:
 		except:
 			listener.close()
 
+
+	def lookUp(self, myID, keyID):
+		# get successor
+
+		n = self.otherSuccessors.get(myID)
+
+		if n > self.key and n < keyID:
+			lookUp(n, keyID)
+		else:
+			return n
+
+
 	def join(self, joiningAddr):
 		'''
 		This function handles the logic of a node joining. This function should do a lot of things such as:
 		Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
 		'''
+
 
 	def put(self, fileName):
 		'''
@@ -76,7 +111,8 @@ class Node:
 		Responsible node should then replicate the file on appropriate node. SEE MANUAL FOR DETAILS. Responsible node should save the files
 		in directory given by host_port e.g. "localhost_20007/file.py".
 		'''
-		
+
+
 	def get(self, fileName):
 		'''
 		This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
@@ -90,6 +126,7 @@ class Node:
 		it should send its share of file to the new responsible node, close all the threads and leave. You can close listener thread
 		by setting self.stop flag to True
 		'''
+
 
 	def sendFile(self, soc, fileName):
 		''' 
@@ -105,6 +142,7 @@ class Node:
 			while contentChunk!="".encode('utf-8'):
 				soc.send(contentChunk)
 				contentChunk = file.read(1024)
+
 
 	def recieveFile(self, soc, fileName):
 		'''
@@ -122,8 +160,14 @@ class Node:
 			file.write(contentChunk)
 		file.close()
 
+
 	def kill(self):
 		# DO NOT EDIT THIS, used for code testing
 		self.stop = True
 
-		
+	def getMsg():
+		sock = socket.socket()
+		soc.connect(("localhost", 20000))
+
+		while True:
+			toSend = 
