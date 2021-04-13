@@ -10,8 +10,8 @@ class Node:
 		self.stop = False
 		self.host = host
 		self.port = port
-		self.M = 16
-		self.N = 2**self.M
+		self.M = 16 # number of bits of hash value
+		self.N = 2**self.M # size of the ring
 		self.key = self.hasher(host+str(port))
 		# You will need to kill this thread when leaving, to do so just set self.stop = True
 		threading.Thread(target = self.listener).start()
@@ -27,8 +27,6 @@ class Node:
 		self.successor = (self.host, self.port)
 		self.predecessor = (self.host, self.port)
 
-		# additional state variables
-		otherSuccessors = {self.key : self.successor}
 
 
 
@@ -47,16 +45,23 @@ class Node:
 		 Function to handle each inbound connection, called as a thread from the listener.
 		'''
 
+		# connect 
+		client.connect((addr))
+
 		while True:
 			# receive message
-			message = client.recv(4096)
+			msg = client.recv(4096)
 
 			# decode message
 			msg = message.decode("utf-8")
 
+			print(msg)
+
 			# process message
-			if msg[0] = "lookup":
-				pass
+			if msg == "lookup":
+				info = [self.key, self.successor]
+				info = " ".join(info)
+				client.send(info)
 			
 			elif msg[0] = "file":
 				pass
@@ -66,6 +71,7 @@ class Node:
 			
 			else:
 				pass
+
 
 	def listener(self):
 		'''
@@ -87,10 +93,14 @@ class Node:
 			listener.close()
 
 
-	def lookUp(self, myID, keyID):
+	def lookUp(self, sock, addr = (self.host, self.port), myID, keyID):
 		# get successor
+		self.sendMsg(sock, addr, "lookup".encode("utf-8"))
+		msg = sock.recv(4096)
+		msg = msg.decode("utf-8")
 
-		n = self.otherSuccessors.get(myID)
+		n = 
+		nKey = self.hasher(self.successor[0] + str(self.successor[1]))
 
 		if n > self.key and n < keyID:
 			lookUp(n, keyID)
@@ -165,9 +175,10 @@ class Node:
 		# DO NOT EDIT THIS, used for code testing
 		self.stop = True
 
-	def getMsg():
-		sock = socket.socket()
-		soc.connect(("localhost", 20000))
 
-		while True:
-			toSend = 
+	def sendMsg(self, sock, addr, msg):
+		sock.connect(addr)
+
+		toSend = msg.encode("utf-8")
+		sock.send(toSend)
+
