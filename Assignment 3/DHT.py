@@ -39,11 +39,11 @@ class Node:
 
     def handleConnection(self, client, addr):
         '''
-         Function to handle each inbound connection, called as a thread from the listener.
+        Function to handle each inbound connection, called as a thread from the listener.
         '''
 
         # receive message
-        msg = client.recv(4096)
+        msg = client.recv(1024)
 
         # decode message
         msg = msg.decode("utf-8")
@@ -88,12 +88,46 @@ class Node:
 
         elif msg[0] == "aage_tou_dekho":
             # change successor
-            msg[0] = "OK"
+            msg[0] = "ok"
             msg1 = json.dumps(msg)
             msg1 = msg1.encode("utf-8")
             client.send(msg1)
         
             self.successor = (msg[1][0], msg[1][1])
+        
+        elif msg[0] == "put":
+            self.files.append(msg[1])
+
+            # make message
+            msg[0] = "saved"
+            msg.append(self.predecessor)
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+
+            # dispatch message
+            client.send(msg)
+
+            self.recieveFile(client, "localhost_" + str(self.port) + "/" + str(msg[1]))
+
+        elif msg[0] == "put_backup":
+            # make message
+            msg[0] = "saved"
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+
+            # dispatch message
+            client.send(msg)
+       
+            self.backUpFiles.append(msg[1])
+        
+        elif msg[0] == "get_file":
+            # make message
+            msg[0] = "saved"
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+
+            # dispatch message
+            client.send(msg)
 
     def listener(self):
         '''
@@ -158,6 +192,49 @@ class Node:
                 sAddr = (msg[1][0], msg[1][1])
                 sKey = self.hasher(sAddr[0] + str(sAddr[1]))   
         
+    def lookUpFile(self, fileName):
+        # get key
+        toInsertKey = self.hasher(fileName)
+
+        # key and address of current node
+        cAddr = (self.host, self.port)
+        cKey = self.key
+        
+        # key and address of current node's successor
+        sAddr = self.successor
+        sKey = self.hasher(self.successor[0] + str(self.successor[1]))
+
+        # case 1: single node in ring
+        if cAddr == sAddr:
+            return (cAddr, 1)
+
+        while True:
+            if (cKey > sKey) and (toInsertKey > cKey or toInsertKey < sKey):
+                return (sAddr, 0)
+
+            elif (cKey < sKey) and (toInsertKey > cKey and toInsertKey < sKey):
+                return (sAddr, 0)
+
+            else:
+                # create socket
+                sock = socket.socket()
+                sock.connect((sAddr[0], sAddr[1]))
+
+                # create message
+                msg = ["lookup"]
+
+                msg = self.sendAndRecv(msg, sAddr)
+
+                sock.close()
+
+                # change current node
+                cAddr = sAddr
+                cKey = sKey
+
+                # change successor
+                sAddr = (msg[1][0], msg[1][1])
+                sKey = self.hasher(sAddr[0] + str(sAddr[1]))
+
     def join(self, joiningAddr):
         '''
         This function handles the logic of a node joining. This function should do a lot of things such as:
@@ -206,13 +283,56 @@ class Node:
         in directory given by host_port e.g. "localhost_20007/file.py".
         '''
 
-        
+        # [('localhost', xxx), 0]
+        nodeAddr = self.lookUpFile(fileName)
 
+        # create socket
+        sock = socket.socket()
+        sock.connect(nodeAddr[0])
+
+        # create and send message
+        msg = ["put", fileName]
+
+        # encode message
+        msg = json.dumps(msg)
+        msg = msg.encode("utf-8")
+
+        # send message
+        sock.send(msg)
+
+        # await reply
+        msg = sock.recv(1024)
+
+        # decode message
+        msg = msg.decode("utf-8")
+        msg = json.loads(msg)
+
+        pAddr = msg[2]
+
+        # dispatch file
+        self.sendFile(sock, fileName)
+        sock.close()
+
+        # dispatch backup file to predecessor
+        sock1 = socket.socket()
+        sock1.connect((pAddr[0], pAddr[1]))
+
+        msg = ["put_backup", fileName]
+        self.sendAndRecv(msg, (pAddr[0], pAddr[1]))
+
+        sock1.close()
+        
     def get(self, fileName):
         '''
         This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
         i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
         '''
+        # [('localhost', xxx), 0]
+        nodeAddr = self.lookUpFile(fileName)
+
+        msg = ["get_file", fileName]
+        self.sendAndRecv(msg, nodeAddr[0])        
+
 
     def leave(self):
         '''
@@ -269,7 +389,7 @@ class Node:
         sock.send(msg)
 
         # await reply
-        msg = sock.recv(4096)
+        msg = sock.recv(1024)
 
         # close socket
         sock.close()

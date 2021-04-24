@@ -97,6 +97,7 @@ def testPutandGet(nodes, files):
 	print ("Placing files on DHT.")
 	points = 0
 	fileHashes = []
+	
 	for i in range(len(files)):
 		fileHashes.append(nodes[0].hasher(files[i]))
 		nodes[0].put(files[i])
