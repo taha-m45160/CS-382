@@ -148,14 +148,32 @@ class Node:
             # dispatch message
             client.send(msg1)
 
-            print(self.files)
-
             for file in msg[1]:
                 if file in self.files:
                     self.files.remove(file)
 
-            print(self.files)
+        elif msg[0] == "leaving_you":
+            self.successor = (msg[1][0], msg[1][1])
 
+            msg[0] = "please_don't_leave_me"
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+            
+            # dispatch message
+            client.send(msg)
+
+        elif msg[0] == "this_belongs_to_you":
+            for file in msg[1]:
+                self.files.append(file)
+            
+            # update predecessor
+            self.predecessor = (msg[2][0], msg[2][1])
+            msg[0] = "you_shall_be_remembered"
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+            
+            # dispatch message
+            client.send(msg)
 
     def listener(self):
         '''
@@ -322,6 +340,8 @@ class Node:
             msg = ["delete_files", mappedFiles]
             self.sendAndRecv(msg, self.predecessor)
 
+            # remap backup files
+
             return
         
     def put(self, fileName):
@@ -414,6 +434,17 @@ class Node:
         it should send its share of file to the new responsible node, close all the threads and leave. You can close listener thread
         by setting self.stop flag to True
         '''
+
+        # intimate predecessor
+        msg = ["leaving_you", self.successor]
+        self.sendAndRecv(msg, self.predecessor)
+
+        # send files to successor
+        msg = ["this_belongs_to_you", self.files, self.predecessor]
+        self.sendAndRecv(msg, self.successor)
+
+        self.stop = True
+
 
     def sendFile(self, soc, fileName):
         '''
