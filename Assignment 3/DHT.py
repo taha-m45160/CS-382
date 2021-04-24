@@ -67,8 +67,11 @@ class Node:
         
         elif msg[0] == "lookup_req":
             newAddr = (msg[1][0], msg[1][1])
-            msg.append(self.lookUp(newAddr))
+            addr = self.lookUp(newAddr)
 
+            msg.append(addr[0])
+            msg.append(addr[1])
+        
             msg = json.dumps(msg)
             msg = msg.encode("utf-8")
             client.send(msg)
@@ -112,9 +115,14 @@ class Node:
         except:
             listener.close()
 
-    def lookUp(self, toInsertAddr):
-        # get key
-        toInsertKey = self.hasher(toInsertAddr[0] + str(toInsertAddr[1]))
+    def lookUp(self, value, file = False):
+        if file:
+            # get file key
+            toInsertKey = self.hasher(file)
+
+        else:
+            # get address key
+            toInsertKey = self.hasher(value[0] + str(value[1]))
 
         # key and address of current node
         cAddr = (self.host, self.port)
@@ -126,16 +134,16 @@ class Node:
 
         # case 1: single node in ring
         if cAddr == sAddr:
-            self.predecessor = toInsertAddr
-            self.successor = toInsertAddr
-            return cAddr
+            self.predecessor = value
+            self.successor = value
+            return (cAddr, 1)
 
         while True:
             if (cKey > sKey) and (toInsertKey > cKey or toInsertKey < sKey):
-                return sAddr
+                return (sAddr, 0)
 
             elif (cKey < sKey) and (toInsertKey > cKey and toInsertKey < sKey):
-                return sAddr
+                return (sAddr, 0)
 
             else:
                 # create socket
@@ -160,18 +168,20 @@ class Node:
         This function handles the logic of a node joining. This function should do a lot of things such as:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
-    
+
         if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
             msg = self.sendAndRecv(msg, joiningAddr)
+            
 
             # key of node already present in DHT
             nodeKey = self.hasher(joiningAddr[0] + str(joiningAddr[1]))
 
             # successor address
             sAddr = (msg[2][0], msg[2][1])
+            flag = msg[3]
 
-            if sAddr == joiningAddr:
+            if sAddr == joiningAddr and flag:
                 self.predecessor = joiningAddr
                 self.successor = joiningAddr
 
@@ -179,18 +189,18 @@ class Node:
 
             # update successor
             self.successor = sAddr
-
+            
             # ask successor to change its predecessor
             msg = ["peechay_tou_dekho", (self.host, self.port)]
-            msg = self.sendAndRecv(msg, joiningAddr)
-
+            msg = self.sendAndRecv(msg, sAddr)
+        
             # change own predecessor
             pAddr = (msg[2][0], msg[2][1])
             self.predecessor = pAddr
 
             # ask new predecessor to change successor
             msg = ["aage_tou_dekho", (self.host, self.port)]
-            msg = self.sendAndRecv(msg, pAddr)
+            self.sendAndRecv(msg, pAddr)
 
             return
         
@@ -200,6 +210,8 @@ class Node:
         Responsible node should then replicate the file on appropriate node. SEE MANUAL FOR DETAILS. Responsible node should save the files
         in directory given by host_port e.g. "localhost_20007/file.py".
         '''
+
+        
 
     def get(self, fileName):
         '''
