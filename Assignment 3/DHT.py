@@ -115,14 +115,9 @@ class Node:
         except:
             listener.close()
 
-    def lookUp(self, value, file = False):
-        if file:
-            # get file key
-            toInsertKey = self.hasher(file)
-
-        else:
-            # get address key
-            toInsertKey = self.hasher(value[0] + str(value[1]))
+    def lookUp(self, toInsertAddr):
+        # get key
+        toInsertKey = self.hasher(toInsertAddr[0] + str(toInsertAddr[1]))
 
         # key and address of current node
         cAddr = (self.host, self.port)
@@ -134,8 +129,8 @@ class Node:
 
         # case 1: single node in ring
         if cAddr == sAddr:
-            self.predecessor = value
-            self.successor = value
+            self.predecessor = toInsertAddr
+            self.successor = toInsertAddr
             return (cAddr, 1)
 
         while True:
