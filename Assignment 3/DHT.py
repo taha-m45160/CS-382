@@ -47,6 +47,12 @@ class Node:
 
         # decode message
         msg = msg.decode("utf-8")
+
+        # check this out (?)
+        if msg == "":
+            # print(addr)
+            return
+
         msg = json.loads(msg)
 
         # process message
@@ -66,6 +72,25 @@ class Node:
             msg = json.dumps(msg)
             msg = msg.encode("utf-8")
             client.send(msg)
+
+        elif msg[0] == "peechay_tou_dekho":
+            # change predecessor
+            msg[0] = "OK"
+            msg.append(self.predecessor)
+            msg1 = json.dumps(msg)
+            msg1 = msg1.encode("utf-8")
+            client.send(msg1)
+        
+            self.predecessor = (msg[1][0], msg[1][1])
+
+        elif msg[0] == "aage_tou_dekho":
+            # change successor
+            msg[0] = "OK"
+            msg1 = json.dumps(msg)
+            msg1 = msg1.encode("utf-8")
+            client.send(msg1)
+        
+            self.successor = (msg[1][0], msg[1][1])
 
     def listener(self):
         '''
@@ -121,16 +146,14 @@ class Node:
                 msg = ["lookup"]
 
                 msg = self.sendAndRecv(msg, sAddr)
-                print("curr", cAddr)
-                print("here", msg)
 
                 # change current node
                 cAddr = sAddr
                 cKey = sKey
 
                 # change successor
-                sAddr = (msg[1][0], msg[1][0])
-                sKey = self.hasher(sAddr[0] + str(sAddr[1]))
+                sAddr = (msg[1][0], msg[1][1])
+                sKey = self.hasher(sAddr[0] + str(sAddr[1]))   
         
     def join(self, joiningAddr):
         '''
@@ -138,7 +161,7 @@ class Node:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
     
-        if joiningAddr is not "":
+        if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
             msg = self.sendAndRecv(msg, joiningAddr)
 
@@ -151,6 +174,25 @@ class Node:
             if sAddr == joiningAddr:
                 self.predecessor = joiningAddr
                 self.successor = joiningAddr
+
+                return
+
+            # update successor
+            self.successor = sAddr
+
+            # ask successor to change its predecessor
+            msg = ["peechay_tou_dekho", (self.host, self.port)]
+            msg = self.sendAndRecv(msg, joiningAddr)
+
+            # change own predecessor
+            pAddr = (msg[2][0], msg[2][1])
+            self.predecessor = pAddr
+
+            # ask new predecessor to change successor
+            msg = ["aage_tou_dekho", (self.host, self.port)]
+            msg = self.sendAndRecv(msg, pAddr)
+
+            return
         
     def put(self, fileName):
         '''
