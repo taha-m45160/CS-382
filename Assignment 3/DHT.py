@@ -21,9 +21,9 @@ class Node:
         if not os.path.exists(host+"_"+str(port)):
             os.mkdir(host+"_"+str(port))
         '''
-		------------------------------------------------------------------------------------
-		DO NOT EDIT ANYTHING ABOVE THIS LINE
-		'''
+        ------------------------------------------------------------------------------------
+        DO NOT EDIT ANYTHING ABOVE THIS LINE
+        '''
         # Set value of the following variables appropriately to pass Intialization test
         self.successor = (self.host, self.port)
         self.predecessor = (self.host, self.port)
@@ -42,9 +42,6 @@ class Node:
          Function to handle each inbound connection, called as a thread from the listener.
         '''
 
-        # connect
-        client.connect(addr)
-
         # receive message
         msg = client.recv(4096)
 
@@ -53,13 +50,21 @@ class Node:
         msg = json.loads(msg)
 
         # process message
-        if msg[0] == "request_lookup":
+        if msg[0] == "lookup":
             # make message
             msg.append(self.successor)
             msg = json.dumps(msg)
             msg = msg.encode("utf-8")
 
             # dispatch message
+            client.send(msg)
+        
+        elif msg[0] == "lookup_req":
+            newAddr = (msg[1][0], msg[1][1])
+            msg.append(self.lookUp(newAddr))
+
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
             client.send(msg)
 
     def listener(self):
@@ -82,64 +87,71 @@ class Node:
         except:
             listener.close()
 
-    def lookUp(self, toInsertKey):
-        # key and address of current node's successor
+    def lookUp(self, toInsertAddr):
+        # get key
+        toInsertKey = self.hasher(toInsertAddr[0] + str(toInsertAddr[1]))
+
+        # key and address of current node
         cAddr = (self.host, self.port)
         cKey = self.key
-
+        
         # key and address of current node's successor
         sAddr = self.successor
         sKey = self.hasher(self.successor[0] + str(self.successor[1]))
 
-        # recursive lookup
-        while (sKey > cKey and toInsertKey > sKey):
-            # create socket
-            sock = socket.socket()
-            sock.connect(self.successor)
+        # case 1: single node in ring
+        if cAddr == sAddr:
+            self.predecessor = toInsertAddr
+            self.successor = toInsertAddr
+            return cAddr
 
-            # create message
-            msg = ["request_lookup"]
-            msg = json.dumps(msg)
+        while True:
+            if (cKey > sKey) and (toInsertKey > cKey or toInsertKey < sKey):
+                return sAddr
 
-            # encode message
-            msg = msg.encode("utf-8")
+            elif (cKey < sKey) and (toInsertKey > cKey and toInsertKey < sKey):
+                return sAddr
 
-            # send message
-            sock.send(msg)
+            else:
+                # create socket
+                sock = socket.socket()
+                sock.connect((sAddr[0], sAddr[1]))
 
-            # await reply
-            msg = sock.recv(4096)
+                # create message
+                msg = ["lookup"]
 
-            # close socket
-            sock.close()
+                msg = self.sendAndRecv(msg, sAddr)
+                print("curr", cAddr)
+                print("here", msg)
 
-            # decode message
-            msg = msg.decode("utf-8")
-            msg = json.loads(msg)
+                # change current node
+                cAddr = sAddr
+                cKey = sKey
 
-            # change current node
-            cAddr = sAddr
-            cKey = sKey
-
-            # change successor
-            sAddr = msg[1]
-            sKey = self.hasher(sAddr[0] + str(sAddr[1]))
-
-        return sAddr
-
+                # change successor
+                sAddr = (msg[1][0], msg[1][0])
+                sKey = self.hasher(sAddr[0] + str(sAddr[1]))
+        
     def join(self, joiningAddr):
         '''
         This function handles the logic of a node joining. This function should do a lot of things such as:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
-		# get key for the new node
-		keyID = self.hasher(joiningAddr[0] + str(joining Addr[1]))
+    
+        if joiningAddr is not "":
+            msg = ["lookup_req", (self.host, self.port)]
+            msg = self.sendAndRecv(msg, joiningAddr)
 
-		# get successor address
-		sAddr = self.lookUp(keyID)
+            # key of node already present in DHT
+            nodeKey = self.hasher(joiningAddr[0] + str(joiningAddr[1]))
 
-		self.successor = sAddr
+            # successor address
+            sAddr = (msg[2][0], msg[2][1])
 
+            if sAddr == joiningAddr:
+                self.predecessor = joiningAddr
+                self.successor = joiningAddr
+        
     def put(self, fileName):
         '''
         This function should first find node responsible for the file given by fileName, then send the file over the socket to that node
@@ -161,7 +173,7 @@ class Node:
         '''
 
     def sendFile(self, soc, fileName):
-        ''' 
+        '''
         Utility function to send a file over a socket
                 Arguments:	soc => a socket object
                                         fileName => file's name including its path e.g. NetCen/PA3/file.py
@@ -194,3 +206,27 @@ class Node:
     def kill(self):
         # DO NOT EDIT THIS, used for code testing
         self.stop = True
+
+    def sendAndRecv(self, msg, addr):
+        # create socket
+        sock = socket.socket()
+        sock.connect(addr)
+
+        # encode message
+        msg = json.dumps(msg)
+        msg = msg.encode("utf-8")
+
+        # send message
+        sock.send(msg)
+
+        # await reply
+        msg = sock.recv(4096)
+
+        # close socket
+        sock.close()
+
+        # decode message
+        msg = msg.decode("utf-8")
+        msg = json.loads(msg)
+
+        return msg

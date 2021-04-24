@@ -59,12 +59,16 @@ def testJoin(nodes,p):
 	print("Case 2: Checking for corner case of 2 nodes.")
 	nodes[1].join(("localhost", p[0]))
 	time.sleep(2)
+	# print("itself", (nodes[0].host, nodes[0].port))
+	# print("suc", nodes[0].successor, ("localhost",p[1]))
+	# print("pre", nodes[0].predecessor, ("localhost",p[1]))
 	if nodes[1].successor == ("localhost",p[0]) and nodes[1].predecessor == ("localhost",p[0]) and nodes[0].successor == ("localhost",p[1]) and nodes[0].predecessor == ("localhost",p[1]):
 		print ("Case 2 passed. \t(+3)")
 		points += 3
 	else:
 		print ("Case 2 failed. \t(0)")
 	print ("Case 3: Checking for general case.")
+
 	nodes[2].join(("localhost", p[0]))
 	time.sleep(2)
 	nodes[3].join(("localhost", p[0]))
