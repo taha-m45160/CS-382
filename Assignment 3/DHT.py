@@ -122,12 +122,14 @@ class Node:
         
         elif msg[0] == "get_file":
             # make message
-            msg[0] = "saved"
+            msg[0] = "sending_file"
             msg = json.dumps(msg)
             msg = msg.encode("utf-8")
 
             # dispatch message
             client.send(msg)
+
+            self.sendFile(client, "localhost_" + str(self.port) + "/" + str(msg[1]))
 
     def listener(self):
         '''
@@ -327,12 +329,38 @@ class Node:
         This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
         i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
         '''
+
+        if fileName not in self.files:
+            return None
+        
         # [('localhost', xxx), 0]
         nodeAddr = self.lookUpFile(fileName)
+        
+        # create socket
+        sock = socket.socket()
+        sock.connect(nodeAddr[0])
 
         msg = ["get_file", fileName]
-        self.sendAndRecv(msg, nodeAddr[0])        
 
+        # encode message
+        msg = json.dumps(msg)
+        msg = msg.encode("utf-8")
+
+        # send message
+        sock.send(msg)
+
+        # await reply
+        msg = sock.recv(1024)
+
+        # decode message
+        msg = msg.decode("utf-8")
+        msg = json.loads(msg)
+
+        # recv file
+        self.recieveFile(sock, fileName)
+        sock.close()
+
+        return fileName
 
     def leave(self):
         '''
