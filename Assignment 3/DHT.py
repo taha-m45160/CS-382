@@ -112,11 +112,11 @@ class Node:
         elif msg[0] == "put_backup":
             # make message
             msg[0] = "saved"
-            msg = json.dumps(msg)
-            msg = msg.encode("utf-8")
+            msg1 = json.dumps(msg)
+            msg1 = msg1.encode("utf-8")
 
             # dispatch message
-            client.send(msg)
+            client.send(msg1)
        
             self.backUpFiles.append(msg[1])
         
@@ -130,6 +130,32 @@ class Node:
             client.send(msg)
 
             self.sendFile(client, "localhost_" + str(self.port) + "/" + str(msg[1]))
+
+        elif msg[0] == "send_backup":
+            msg.append(self.backUpFiles)
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+            
+            # dispatch message
+            client.send(msg)
+
+        elif msg[0] == "delete_files":
+            # make message
+            msg[0] = "deleted"
+            msg1 = json.dumps(msg)
+            msg1 = msg1.encode("utf-8")
+
+            # dispatch message
+            client.send(msg1)
+
+            print(self.files)
+
+            for file in msg[1]:
+                if file in self.files:
+                    self.files.remove(file)
+
+            print(self.files)
+
 
     def listener(self):
         '''
@@ -275,6 +301,26 @@ class Node:
             # ask new predecessor to change successor
             msg = ["aage_tou_dekho", (self.host, self.port)]
             self.sendAndRecv(msg, pAddr)
+
+            # get file backup from predecessor
+            msg = ["send_backup"]
+            backup = self.sendAndRecv(msg, self.predecessor)[1]
+
+            # create a list of files that map to curr node
+            myKey = self.hasher(self.host + str(self.port))
+            mappedFiles = []
+
+            for filename in backup:
+                if self.hasher(filename) <= myKey:
+                    mappedFiles.append(filename)
+                    self.files.append(filename)
+                
+                else:
+                    self.backUpFiles.append(filename)
+            
+            # ask successor to delete mapped files
+            msg = ["delete_files", mappedFiles]
+            self.sendAndRecv(msg, self.predecessor)
 
             return
         
