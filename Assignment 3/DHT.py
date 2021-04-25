@@ -163,6 +163,12 @@ class Node:
             # dispatch message
             client.send(msg)
 
+            # change next successor
+            msg = ["tumhare_aage_kon_hai"]
+            msg = self.sendAndRecv(msg, self.successor)
+
+            self.nextSuccessor = (msg[1][0], msg[1][1])
+
         elif msg[0] == "this_belongs_to_you":
             for file in msg[1]:
                 self.files.append(file)
@@ -183,7 +189,15 @@ class Node:
             
             # dispatch message
             client.send(msg)
+
+        elif msg[0] == "tumhare_aage_kon_hai":
+            msg.append(self.successor)
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
             
+            # dispatch message
+            client.send(msg)
+
     def listener(self):
         '''
         We have already created a listener for you, any connection made by other nodes will be accepted here.
@@ -296,8 +310,9 @@ class Node:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
 
-        t1 = threading.Thread(name = 'daemon', target = self.ping).start()
+        t1 = threading.Thread(name = 'daemon', target = self.bing)
         t1.setDaemon(True)
+        t1.start()
 
         if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
@@ -314,11 +329,18 @@ class Node:
             if sAddr == joiningAddr and flag:
                 self.predecessor = joiningAddr
                 self.successor = joiningAddr
+                self.nextSuccessor = (self.host, self.port)
 
                 return
 
             # update successor
             self.successor = sAddr
+
+            # update next successor
+            msg = ["tumhare_aage_kon_hai"]
+            msg = self.sendAndRecv(msg, sAddr)
+
+            self.nextSuccessor = (msg[1][0], msg[1][1])
             
             # ask successor to change its predecessor
             msg = ["peechay_tou_dekho", (self.host, self.port)]
@@ -530,7 +552,7 @@ class Node:
         
             # create socket
             sock = socket.socket()
-            sock.connect(addr)
+            sock.connect(self.successor)
 
             # encode message
             msg = json.dumps(msg)
@@ -567,7 +589,7 @@ class Node:
 
                 self.sendAndRecv(msg, self.successor)
             
-            sleep(4)
+            time.sleep(4)
 
 
 
