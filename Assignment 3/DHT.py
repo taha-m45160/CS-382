@@ -170,12 +170,13 @@ class Node:
             self.nextSuccessor = (msg[1][0], msg[1][1])
 
         elif msg[0] == "this_belongs_to_you":
+            # store remapped files
             for file in msg[1]:
                 self.files.append(file)
             
-            # update predecessor
-            self.predecessor = (msg[2][0], msg[2][1])
-            msg[0] = "you_shall_be_remembered"
+            # send own files for backup
+            msg[0] = "here's_your_stuff"
+            msg[1] = self.files
             msg = json.dumps(msg)
             msg = msg.encode("utf-8")
             
@@ -331,7 +332,6 @@ class Node:
         if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
             msg = self.sendAndRecv(msg, joiningAddr)
-            
 
             # key of node already present in DHT
             nodeKey = self.hasher(joiningAddr[0] + str(joiningAddr[1]))
@@ -367,6 +367,11 @@ class Node:
             # ask new predecessor to change successor
             msg = ["aage_tou_dekho", (self.host, self.port)]
             self.sendAndRecv(msg, pAddr)
+
+            # print("P" , self.predecessor, self.hasher(self.predecessor[0] + str(self.predecessor[1])))
+            # print("C", (self.host, self.port), self.hasher(self.host + str(self.port)))
+            # print("S", self.successor, self.hasher(self.successor[0] + str(self.successor[1])))
+            # print("NS", self.nextSuccessor, self.hasher(self.nextSuccessor[0] + str(self.nextSuccessor[1])))
 
             # get file backup from predecessor
             msg = ["send_backup"]
@@ -447,7 +452,7 @@ class Node:
         # [('localhost', xxx), 0]
         nodeAddr = self.lookUpFile(fileName)
 
-        # check if returned node has the file
+        # ask the returned node if it has the file
         msg = ["file_hai_na_?", fileName]
         msg = self.sendAndRecv(msg, (nodeAddr[0][0], nodeAddr[0][1]))
 
@@ -561,53 +566,60 @@ class Node:
         pinging function
         """
 
-        pingCount = 3
+        pingCount = 1
         i = 0
 
         while self.stop == False:
             # ping successor
             msg = ["ping"]
-        
-            # create socket
-            sock = socket.socket()
-            sock.connect(self.successor)
-
-            # encode message
-            msg = json.dumps(msg)
-            msg = msg.encode("utf-8")
-
-            # send message
-            sock.send(msg)
-
-            # await reply
-            sock.settimeout(0.1)
+            flag = False
         
             try:
-                msg = sock.recv(1024)
+                # create socket
+                sock = socket.socket()
+                sock.connect(self.successor)
             except:
                 i += 1
+                flag = True
 
-            sock.close()
+            if flag == False:
+                # encode message
+                msg = json.dumps(msg)
+                msg = msg.encode("utf-8")
+
+                # send message
+                sock.send(msg)
+
+                # await reply
+                sock.settimeout(0.2)
+        
+                try:
+                    msg = sock.recv(1024)
+                except:
+                    i += 1
+
+                sock.close()
 
             # successor down
             if i == pingCount:
                 # reset i
                 i = 0
+                # print("DOWN", (self.host, self.port))
 
                 # update successor
                 self.successor = self.nextSuccessor
 
                 # ask successor to update predecessor
                 msg = ["peechay_tou_dekho", (self.host, self.port)]
-
                 self.sendAndRecv(msg, self.successor)
 
                 # remap files to successor
                 msg = ["this_belongs_to_you", self.backUpFiles]
+                msg = self.sendAndRecv(msg, self.successor)
 
-                self.sendAndRecv(msg, self.successor)
+                self.backUpFiles = msg[1]
             
-            time.sleep(4)
+            time.sleep(0.5)
 
 
 
