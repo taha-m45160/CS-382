@@ -198,6 +198,20 @@ class Node:
             # dispatch message
             client.send(msg)
 
+        elif msg[0] == "file_hai_na_?":
+            if str(msg[1]) not in self.files:
+                msg[0] = "na"
+                msg.append(0)
+            else:
+                msg[0] = "ha"
+                msg.append(1)
+
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+            
+            # dispatch message
+            client.send(msg)
+
     def listener(self):
         '''
         We have already created a listener for you, any connection made by other nodes will be accepted here.
@@ -429,13 +443,17 @@ class Node:
         This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
         i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
         '''
-
-        if fileName not in self.files:
-            return None
         
         # [('localhost', xxx), 0]
         nodeAddr = self.lookUpFile(fileName)
-        
+
+        # check if returned node has the file
+        msg = ["file_hai_na_?", fileName]
+        msg = self.sendAndRecv(msg, (nodeAddr[0][0], nodeAddr[0][1]))
+
+        if msg[2] == 0:
+            return None
+
         # create socket
         sock = socket.socket()
         sock.connect(nodeAddr[0])
