@@ -84,7 +84,8 @@ class Node:
             msg1 = json.dumps(msg)
             msg1 = msg1.encode("utf-8")
             client.send(msg1)
-        
+
+            print(msg)
             self.predecessor = (msg[1][0], msg[1][1])
 
         elif msg[0] == "aage_tou_dekho":
@@ -163,6 +164,10 @@ class Node:
             # dispatch message
             client.send(msg)
 
+            # ask new successor to change predecessor
+            msg1 = ["peechay_tou_dekho", (self.host, self.port)]
+            self.sendAndRecv(msg1, self.successor)
+
             # change next successor
             msg = ["tumhare_aage_kon_hai"]
             msg = self.sendAndRecv(msg, self.successor)
@@ -173,15 +178,44 @@ class Node:
             # store remapped files
             for file in msg[1]:
                 self.files.append(file)
-            
-            # send own files for backup
-            msg[0] = "here's_your_stuff"
-            msg[1] = self.files
+
             msg = json.dumps(msg)
             msg = msg.encode("utf-8")
-            
+
             # dispatch message
             client.send(msg)
+
+            # send own files for backup
+            msg1 = ["here's_your_stuff", self.files]
+            self.sendAndRecv(msg1, self.predecessor)
+
+        elif msg[0] == "don't_leave":
+            # store remapped files
+            for file in msg[1]:
+                self.files.append(file)
+
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+
+            # dispatch message
+            client.send(msg)
+
+            # send own files for backup
+            msg1 = ["here's_your_stuff", self.files]
+
+            self.sendAndRecv(msg1, self.predecessor)
+
+        elif msg[0] == "here's_your_stuff":
+            # update backup
+            self.backUpFiles = msg[1]
+
+            msg[0] = "thanks"
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+
+            # dispatch message
+            client.send(msg)
+
 
         elif msg[0] == "ping":
             msg[0] = "still_here_bro"
@@ -325,9 +359,9 @@ class Node:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
 
-        t1 = threading.Thread(name = 'daemon', target = self.bing)
-        t1.setDaemon(True)
-        t1.start()
+        # t1 = threading.Thread(name = 'daemon', target = self.bing)
+        # t1.setDaemon(True)
+        # t1.start()
 
         if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
@@ -394,6 +428,7 @@ class Node:
             self.sendAndRecv(msg, self.predecessor)
 
             # remap backup files
+
 
             return
         
@@ -492,13 +527,17 @@ class Node:
         by setting self.stop flag to True
         '''
 
+        # print("CURR:", (self.host, self.port))
+        # print("SUCC:", self.successor)
+        # print("PRE:", self.predecessor)
+
         # intimate predecessor
         msg = ["leaving_you", self.successor]
         self.sendAndRecv(msg, self.predecessor)
 
         # send files to successor
-        msg = ["this_belongs_to_you", self.files, self.predecessor]
-        self.sendAndRecv(msg, self.successor)
+        msg = ["don't_leave", self.files]
+        msg = self.sendAndRecv(msg, self.successor)
 
         self.stop = True
 
@@ -561,65 +600,63 @@ class Node:
 
         return msg
 
-    def bing(self):
-        """
-        pinging function
-        """
+    # def bing(self):
+    #     """
+    #     pinging function
+    #     """
 
-        pingCount = 1
-        i = 0
+    #     pingCount = 1
+    #     i = 0
 
-        while self.stop == False:
-            # ping successor
-            msg = ["ping"]
-            flag = False
+    #     while self.stop == False:
+    #         # ping successor
+    #         msg = ["ping"]
+    #         flag = False
         
-            try:
-                # create socket
-                sock = socket.socket()
-                sock.connect(self.successor)
-            except:
-                i += 1
-                flag = True
+    #         try:
+    #             # create socket
+    #             sock = socket.socket()
+    #             sock.connect(self.successor)
+    #         except:
+    #             i += 1
+    #             flag = True
 
-            if flag == False:
-                # encode message
-                msg = json.dumps(msg)
-                msg = msg.encode("utf-8")
+    #         if flag == False:
+    #             # encode message
+    #             msg = json.dumps(msg)
+    #             msg = msg.encode("utf-8")
 
-                # send message
-                sock.send(msg)
+    #             # send message
+    #             sock.send(msg)
 
-                # await reply
-                sock.settimeout(0.2)
+    #             # await reply
+    #             sock.settimeout(0.2)
         
-                try:
-                    msg = sock.recv(1024)
-                except:
-                    i += 1
+    #             try:
+    #                 msg = sock.recv(1024)
+    #             except:
+    #                 i += 1
 
-                sock.close()
+    #             sock.close()
 
-            # successor down
-            if i == pingCount:
-                # reset i
-                i = 0
-                # print("DOWN", (self.host, self.port))
+    #         # successor down
+    #         if i == pingCount:
+    #             # reset i
+    #             i = 0
+    #             # print("DOWN", (self.host, self.port))
 
-                # update successor
-                self.successor = self.nextSuccessor
+    #             # update successor
+    #             self.successor = self.nextSuccessor
 
-                # ask successor to update predecessor
-                msg = ["peechay_tou_dekho", (self.host, self.port)]
-                self.sendAndRecv(msg, self.successor)
+    #             # ask successor to update predecessor
+    #             msg = ["peechay_tou_dekho", (self.host, self.port)]
+    #             self.sendAndRecv(msg, self.successor)
 
-                # remap files to successor
-                msg = ["this_belongs_to_you", self.backUpFiles]
-                msg = self.sendAndRecv(msg, self.successor)
-
-                self.backUpFiles = msg[1]
+    #             # remap files to successor
+    #             msg = ["this_belongs_to_you", self.backUpFiles]
+    #             self.sendAndRecv(msg, self.successor)
             
-            time.sleep(0.5)
+    #         time.sleep(0.5)
 
 
 

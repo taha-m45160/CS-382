@@ -173,6 +173,9 @@ def testLeave(nodes, files):
 	correct = True
 	print ("Checking for successor and predecessor updation.\n")
 	for i in range(len(nodes)):
+		# print("Current Node:", nodes[i].port)
+		# print("Expected Successor:", nodes[(i+1) % len(nodes)].port, "Actual Successor:", nodes[i].successor[1])
+		# print("Expected Predecessor:", nodes[i-1].port, "Actual Predecessor:", nodes[i].predecessor[1])
 		if nodes[i].successor == None:
 			correct = False
 		elif nodes[i].successor[1] == nodes[(i+1) % len(nodes)].port and nodes[i].predecessor[1] == nodes[i-1].port:
