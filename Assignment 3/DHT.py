@@ -359,9 +359,9 @@ class Node:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
 
-        # t1 = threading.Thread(name = 'daemon', target = self.bing)
-        # t1.setDaemon(True)
-        # t1.start()
+        t1 = threading.Thread(name = 'daemon', target = self.bing)
+        t1.setDaemon(True)
+        t1.start()
 
         if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
@@ -600,63 +600,63 @@ class Node:
 
         return msg
 
-    # def bing(self):
-    #     """
-    #     pinging function
-    #     """
+    def bing(self):
+        """
+        pinging function
+        """
 
-    #     pingCount = 1
-    #     i = 0
+        pingCount = 1
+        i = 0
 
-    #     while self.stop == False:
-    #         # ping successor
-    #         msg = ["ping"]
-    #         flag = False
+        while self.stop == False:
+            # ping successor
+            msg = ["ping"]
+            flag = False
         
-    #         try:
-    #             # create socket
-    #             sock = socket.socket()
-    #             sock.connect(self.successor)
-    #         except:
-    #             i += 1
-    #             flag = True
+            try:
+                # create socket
+                sock = socket.socket()
+                sock.connect(self.successor)
+            except:
+                i += 1
+                flag = True
 
-    #         if flag == False:
-    #             # encode message
-    #             msg = json.dumps(msg)
-    #             msg = msg.encode("utf-8")
+            if flag == False:
+                # encode message
+                msg = json.dumps(msg)
+                msg = msg.encode("utf-8")
 
-    #             # send message
-    #             sock.send(msg)
+                # send message
+                sock.send(msg)
 
-    #             # await reply
-    #             sock.settimeout(0.2)
+                # await reply
+                sock.settimeout(0.2)
         
-    #             try:
-    #                 msg = sock.recv(1024)
-    #             except:
-    #                 i += 1
+                try:
+                    msg = sock.recv(1024)
+                except:
+                    i += 1
 
-    #             sock.close()
+                sock.close()
 
-    #         # successor down
-    #         if i == pingCount:
-    #             # reset i
-    #             i = 0
-    #             # print("DOWN", (self.host, self.port))
+            # successor down
+            if i == pingCount:
+                # reset i
+                i = 0
+                # print("DOWN", (self.host, self.port))
 
-    #             # update successor
-    #             self.successor = self.nextSuccessor
+                # update successor
+                self.successor = self.nextSuccessor
 
-    #             # ask successor to update predecessor
-    #             msg = ["peechay_tou_dekho", (self.host, self.port)]
-    #             self.sendAndRecv(msg, self.successor)
+                # ask successor to update predecessor
+                msg = ["peechay_tou_dekho", (self.host, self.port)]
+                self.sendAndRecv(msg, self.successor)
 
-    #             # remap files to successor
-    #             msg = ["this_belongs_to_you", self.backUpFiles]
-    #             self.sendAndRecv(msg, self.successor)
+                # remap files to successor
+                msg = ["this_belongs_to_you", self.backUpFiles]
+                self.sendAndRecv(msg, self.successor)
             
-    #         time.sleep(0.5)
+            time.sleep(0.5)
 
 
 
