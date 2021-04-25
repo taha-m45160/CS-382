@@ -27,6 +27,7 @@ class Node:
         # Set value of the following variables appropriately to pass Intialization test
         self.successor = (self.host, self.port)
         self.predecessor = (self.host, self.port)
+        self.nextSuccessor = ()
 
     def hasher(self, key):
         '''
@@ -175,6 +176,14 @@ class Node:
             # dispatch message
             client.send(msg)
 
+        elif msg[0] == "ping":
+            msg[0] = "still_here_bro"
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+            
+            # dispatch message
+            client.send(msg)
+            
     def listener(self):
         '''
         We have already created a listener for you, any connection made by other nodes will be accepted here.
@@ -286,6 +295,9 @@ class Node:
         This function handles the logic of a node joining. This function should do a lot of things such as:
         Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
         '''
+
+        t1 = threading.Thread(name = 'daemon', target = self.ping).start()
+        t1.setDaemon(True)
 
         if joiningAddr != "":
             msg = ["lookup_req", (self.host, self.port)]
@@ -445,7 +457,6 @@ class Node:
 
         self.stop = True
 
-
     def sendFile(self, soc, fileName):
         '''
         Utility function to send a file over a socket
@@ -504,3 +515,63 @@ class Node:
         msg = json.loads(msg)
 
         return msg
+
+    def bing(self):
+        """
+        pinging function
+        """
+
+        pingCount = 3
+        i = 0
+
+        while self.stop == False:
+            # ping successor
+            msg = ["ping"]
+        
+            # create socket
+            sock = socket.socket()
+            sock.connect(addr)
+
+            # encode message
+            msg = json.dumps(msg)
+            msg = msg.encode("utf-8")
+
+            # send message
+            sock.send(msg)
+
+            # await reply
+            sock.settimeout(0.1)
+        
+            try:
+                msg = sock.recv(1024)
+            except:
+                i += 1
+
+            sock.close()
+
+            # successor down
+            if i == pingCount:
+                # reset i
+                i = 0
+
+                # update successor
+                self.successor = self.nextSuccessor
+
+                # ask successor to update predecessor
+                msg = ["peechay_tou_dekho", (self.host, self.port)]
+
+                self.sendAndRecv(msg, self.successor)
+
+                # remap files to successor
+                msg = ["this_belongs_to_you", self.backUpFiles]
+
+                self.sendAndRecv(msg, self.successor)
+            
+            sleep(4)
+
+
+
+                
+
+            
+
