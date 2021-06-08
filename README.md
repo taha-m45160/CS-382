@@ -1,5 +1,5 @@
 # CS-382
-Network-Centric Computing - An Introduction to Networks
+Network-Centric Computing - An Introduction to Networks and Distributed Applications
 
 Assignment 1 - Developing a simple chat application using UDP and implementing a reliable protocol
 Assignment 2 - Implementing the distance vector routing protocol 
